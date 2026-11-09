@@ -55,6 +55,9 @@ a{color:var(--acc-ink)}
 .subj:active{transform:scale(.98)}
 .subj .em{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:24px}
 .subj h3{margin:0;font-size:17px;line-height:1.25;font-weight:700}
+.subj .teacher{font-size:13px;color:var(--muted);line-height:1.3;margin-top:-4px}
+.subj-head p.t{margin:0 0 4px;opacity:1}
+.lec-head p.lt{margin-top:6px;font-size:13px}
 .subj .meta{margin-top:auto;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
 .subj .bar{position:absolute;left:0;right:0;bottom:0;height:4px}
 .install{margin-top:22px;width:100%;display:flex;gap:12px;align-items:center;padding:14px;border-radius:var(--r);background:linear-gradient(135deg,#ece8ff,#e3efff);text-align:left}
@@ -185,6 +188,7 @@ mark{background:#ffe58a;color:inherit;border-radius:3px;padding:0 1px}
 const GEN = {
   id: 'genetics', name: 'Медицинская генетика', short: 'Медгенетика',
   color: '#7b61d6', soft: '#f0ecff', ink: '#46309a', emoji: '🧬',
+  teacher: 'Шук Инесса Николаевна',
   lectures: [
   {
     id: 'gen-1', num: 1, title: 'Цитологические основы наследственности',
@@ -583,6 +587,7 @@ const GEN = {
 const IMM = {
   id: 'immunology', name: 'Основы микробиологии и иммунологии', short: 'Микробиология',
   color: '#2f6fd6', soft: '#e6f0ff', ink: '#163f86', emoji: '🦠',
+  teacher: 'Красавина Алёна Александровна',
   lectures: [
   {
     id: 'imm-1', num: 1, title: 'Иммунопрофилактика и вакцины',
@@ -676,6 +681,7 @@ const IMM = {
 const ANAT = {
   id: 'anatomy', name: 'Анатомия', short: 'Анатомия',
   color: '#d9673a', soft: '#fff0e8', ink: '#8a3412', emoji: '🦴',
+  teacher: 'Запевалов Илья Андреевич',
   lectures: [
   {
     id: 'anat-1', num: 1, title: 'Кости, суставы, связки и переломы',
@@ -767,7 +773,7 @@ const ANAT = {
 const INF = {
   id: 'informatics', name: 'Медицинская информатика', short: 'Информатика',
   color: '#1f9d6b', soft: '#e3f6ee', ink: '#0d5c3e', emoji: '💻',
-  teacher: 'Молчанов В. В.',
+  teacher: 'Молчанов Владимир Владимирович',
   lectures: [ { id: 'inf-1', num: 1, title: 'Материалы скоро появятся', sub: 'Скоро появится', soon: true } ],
 };
 
@@ -904,6 +910,7 @@ function viewHome(){
         <button class="subj" data-go="s-${s.id}">
           <div class="em" style="background:${s.soft}">${s.emoji}</div>
           <h3>${esc(s.name)}</h3>
+          ${s.teacher ? `<div class="teacher">👤 ${esc(s.teacher)}</div>` : ''}
           <div class="meta"><span>${lecCount(s) ? lecCount(s)+' '+word(lecCount(s)) : 'скоро'}</span><span class="chev">${I.chev}</span></div>
           <div class="bar" style="background:${s.color}"></div>
         </button>`).join('')}</div>
@@ -949,7 +956,7 @@ function viewSubject(s){
   app.innerHTML = `
     <div class="subj-head" style="background:linear-gradient(135deg, ${s.color}, ${s.ink})">
       <div class="em">${s.emoji}</div><h1>${esc(s.name)}</h1>
-      <p>${s.teacher ? 'Преподаватель: '+esc(s.teacher)+' · ' : ''}${s.lectures.filter(l=>!l.soon).length || 'пока нет'} ${s.lectures.filter(l=>!l.soon).length?'лекц.':'лекций'}</p></div>
+      ${s.teacher ? `<p class="t">👤 Преподаватель: <b>${esc(s.teacher)}</b></p>` : ''}<p>${s.lectures.filter(l=>!l.soon).length || 'пока нет'} ${s.lectures.filter(l=>!l.soon).length?'лекц.':'лекций'}</p></div>
     ${s.lectures.map(l => {
       if (l.soon) return `<div class="lec soon"><div class="n" style="background:${s.soft};color:${s.ink}">${l.num}</div><div><b>${esc(l.title)}</b><span>⏳ ${esc(l.sub)}</span></div></div>`;
       const p = progressOf(l);
@@ -968,7 +975,7 @@ function viewLecture(l, secIdx){
   topBar(s.short, 's-'+s.id, `<button class="icon-btn" data-go="" aria-label="Главная">${I.home}</button>`);
   app.innerHTML = `
     <div class="lec-head"><div class="kicker">${s.emoji} ${esc(s.short)} · лекция ${l.num}${l.date?' · '+l.date:''}</div>
-      <h1>${esc(l.title)}</h1><p>${esc(l.sub)}</p></div>
+      <h1>${esc(l.title)}</h1><p>${esc(l.sub)}</p>${s.teacher?`<p class="lt">👤 ${esc(s.teacher)}</p>`:''}</div>
     <div class="tabs">
       <button class="tab" data-tab="notes">📖 Конспект</button>
       <button class="tab" data-tab="cards">🃏 Карточки</button>
