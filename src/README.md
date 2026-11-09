@@ -1,12 +1,14 @@
 # Исходники сайта «Зубрёжка · С-201»
 
-- `data_gen.js`, `data_other.js` — лекции (краткие конспекты, карточки, тесты) по предметам.
+- `data_gen.js`, `data_other.js`, `data_nurse.js` — лекции (краткие конспекты, карточки, тесты) по предметам. `data_nurse.js` — «Основы сестринского дела» (Сажнова Е.Ю.), схемы к нему — `svg_nurse.js` (`SVG_EXTRA`, подмешивается в `SVGS`).
+- `data_exam.js` — вопросы к экзамену (`EXAM[subjectId]`: theory/practice, у каждого `short` — кратко, `full` — полный ответ блоками). Экран `#exam-<subjectId>`, кнопка на странице предмета; PDF: `pdf/exam-<id>.pdf` и `pdf/exam-<id>-short.pdf` из `window.__printableExam(id, 'full'|'short')`. Вопросы экзамена попадают в «Быстрый ответ».
+- `data_nurse_oral.js` — устный опрос по сестринскому делу (дополняет `ORAL`).
 - `data_oral.js` — вопросы для «Быстрого ответа».
 - `data_full.js` — полные версии: страницы-картинки в `full/<id>/NN.webp`, PDF в `pdf/full/`.
 - `app.js`, `app.html` — логика и вёрстка.
 - Сборка: `python3 src/build.py` → `index.html`. После изменений поднять версию кэша в `sw.js` (s201-vN).
 - Краткие PDF (`pdf/<id>.pdf`) печатаются headless Chrome из `window.__printable(id)`.
-- Полные страницы: `pdftoppm -r 120 -png` → WebP 1100px, q74.
+- Полные страницы: `pdftoppm -r 120 -png` → WebP 1100px, q74. Для фото тетради (сестринское дело): обрезка + WebP 1000px q60, PDF полной версии с невидимым текстовым слоем (расшифровка) — чтобы работал поиск.
 - Поиск по полным версиям: `python3 src/build_fulltext.py` (нужен pdftotext) → `fulltext.json`; затем `python3 src/build.py` (вшивает версию файла). Запускать после добавления или замены полной версии.
 - Правило: краткий конспект охватывает все темы полной версии, включая «доп.» разделы.
 - Оформление: `python3 src/build_theme.py` → `src/theme.css` (тема «Яркий» + ночной режим `html[data-theme=dark]`), build.py вшивает его в index.html. Шрифты (Unbounded, Golos Text) лежат в `fonts/`. Кнопка ☀️/🌙 в шапке, по умолчанию — как на телефоне.

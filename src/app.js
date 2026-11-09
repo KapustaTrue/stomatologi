@@ -67,6 +67,8 @@ const SVGS = {
   </svg>`,
 };
 
+if (typeof SVG_EXTRA !== 'undefined') Object.assign(SVGS, SVG_EXTRA);
+
 /* ---------- render helpers ---------- */
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const strip = s => String(s).replace(/<[^>]+>/g,'');
@@ -110,6 +112,7 @@ function schedSubj(name){
   if (n.includes('генетик')) return SUBJ.genetics;
   if (n.includes('анатом')) return SUBJ.anatomy;
   if (n.includes('информатик')) return SUBJ.informatics;
+  if (n.includes('сестрин') && SUBJ.nursing) return SUBJ.nursing;
   return null;
 }
 const schedStyle = name => { const s = schedSubj(name); return s ? { c:s.color, ci:s.ink, cs:s.soft, em:s.emoji, id:s.id } : name.toLowerCase().includes('истори') ? { c:'#c2891c', ci:'#7a5208', cs:'#fff4dc', em:'📜' } : { c:'#7a7f99', ci:'#3d4160', cs:'#eef0f6', em:'📘' }; };
@@ -322,6 +325,14 @@ function buildIndex(){
       items.push({ l, kind:'sec', si, q: s.title, a: sut, more: body, kw:'', w:.9 });
     });
   });
+  if (typeof EXAM !== 'undefined') Object.entries(EXAM).forEach(([sid, E]) => {
+    const subj = SUBJ[sid]; if (!subj) return;
+    const first = subj.lectures.find(l=>!l.soon); if (!first) return;
+    [['theory', E.theory], ['practice', E.practice]].forEach(([kind, arr]) => arr.forEach(it => {
+      const l = LEC[(it.lec||[])[0]] || first;
+      items.push({ l, kind:'exam', exk: sid + '|' + examKey(kind, it.n), q: (kind==='theory' ? 'Экзамен, вопрос ' + it.n + ': ' : 'Практика ' + it.n + ': ') + it.q, a: it.short.join(' '), more: strip(it.full.map(blockText).join(' ')), kw:'', w:1.6 });
+    }));
+  });
   (FT||[]).forEach(([lid, ref, pg, h, t]) => {
     const l = LEC[lid]; if (!l || l.soon) return;
     items.push({ l, kind:'full', ref, pg, q: h || '', a: t, kw:'', w:.7 });
@@ -397,8 +408,9 @@ function renderQuick(){
   if (!r.length){ box.innerHTML = `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово или убери лишние</small></div>`; return; }
   const qs = qtoks(q);
   const hl = s => { let h = s; qs.forEach(t => { if (t.length < 3) return; h = h.replace(new RegExp('(^|[^а-яёa-z])(' + t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[а-яёa-z]*)', 'gi'), '$1<mark>$2</mark>'); }); return h; };
-  const src = it => `${it.l.subject.emoji} ${esc(it.l.subject.short)} · ${esc(it.l.title)}`;
+  const src = it => it.kind === 'exam' ? `📝 ${esc(it.l.subject.short)} · вопросы к экзамену` : `${it.l.subject.emoji} ${esc(it.l.subject.short)} · ${esc(it.l.title)}`;
   const ans = it => {
+    if (it.kind === 'exam') return hl(esc(it.a));
     if (it.kind !== 'full') return hl(it.a);
     const t = it.a, low = t.toLowerCase().replace(/ё/g,'е'); let pos = -1;
     qs.forEach(w => { if (w.length < 3) return; const i = low.indexOf(w); if (i >= 0 && (pos < 0 || i < pos)) pos = i; });
@@ -406,7 +418,7 @@ function renderQuick(){
     return hl(esc((from ? '…' : '') + cut + (from + 460 < t.length ? '…' : '')));
   };
   const ttl = it => it.kind === 'full' ? fullLabel(it) : hl(esc(it.q));
-  const btn = it => it.kind === 'full' ? fullBtn(it, 'qopen') : `<button class="qopen" data-go="${go(it)}" ${it.si!=null?`data-sec="${it.si}"`:''}>Открыть в конспекте →</button>`;
+  const btn = it => it.kind === 'exam' ? `<button class="qopen" data-exopen="${it.exk}">Открыть в вопросах к экзамену →</button>` : it.kind === 'full' ? fullBtn(it, 'qopen') : `<button class="qopen" data-go="${go(it)}" ${it.si!=null?`data-sec="${it.si}"`:''}>Открыть в конспекте →</button>`;
   const go = it => hashId(it.l.id);
   const [top, ...rest] = r;
   const t = top.it;
@@ -415,7 +427,7 @@ function renderQuick(){
       <div class="qsrc">${src(t)}</div>
       <div class="qq">${ttl(t)}</div>
       <div class="qa">${ans(t)}</div>
-      ${t.kind==='sec' && t.more ? `<details class="qmore"><summary>Подробнее</summary><div>${hl(esc(t.more))}</div></details>` : ''}
+      ${(t.kind==='sec'||t.kind==='exam') && t.more ? `<details class="qmore"><summary>Подробнее</summary><div>${hl(esc(t.more))}</div></details>` : ''}
       ${btn(t)}
     </div>
     ${rest.length ? `<div class="section-label">Похожие ответы</div>` + rest.map(({it}) => `
@@ -503,6 +515,7 @@ function viewSubject(s){
     <div class="subj-head" style="background:linear-gradient(135deg, ${s.color}, ${s.ink})">
       <div class="em">${s.emoji}</div><h1>${esc(s.name)}</h1>
       ${s.teacher ? `<p class="t">👤 Преподаватель: <b>${esc(s.teacher)}</b></p>` : ''}<p>${s.lectures.filter(l=>!l.soon).length || 'пока нет'} ${s.lectures.filter(l=>!l.soon).length?'лекц.':'лекций'}</p></div>
+    ${typeof EXAM !== 'undefined' && EXAM[s.id] ? examEntry(s) : ''}
     ${s.lectures.map(l => {
       if (l.soon) return `<div class="lec soon"><div class="n" style="background:${s.soft};color:${s.ink}">${l.num}</div><div><b>${esc(l.title)}</b><span>⏳ ${esc(l.sub)}</span></div></div>`;
       const p = progressOf(l);
@@ -512,6 +525,104 @@ function viewSubject(s){
         <div class="prog" style="color:${s.ink}">${p.known?`<span>🃏 ${p.known}/${p.total}</span>`:''}${p.best!=null?`<span>✅ тест ${p.best}/${p.qn}</span>`:''}</div></div>
         <span class="chev">${I.chev}</span></button>`;
     }).join('')}`;
+}
+
+
+/* ===== вопросы к экзамену ===== */
+let examMode = store.get('examMode','full'), examQ = '', examTab = 'theory', examOnlyNew = false, pendingExam = null;
+const EXM = {}; // режим отдельных вопросов
+const examKey = (kind, n) => (kind==='theory' ? 't' : 'p') + n;
+function examKnown(sid){ return (store.get('examKnown',{})[sid]) || {}; }
+function examStats(sid){ const E = EXAM[sid], k = examKnown(sid); const all = E.theory.length + E.practice.length; return { all, known: Object.keys(k).filter(x=>k[x]).length }; }
+function examEntry(s){
+  const E = EXAM[s.id], st = examStats(s.id);
+  return `<button class="exam-entry" data-go="exam-${s.id}" style="--c:${s.color};--ci:${s.ink};--cs:${s.soft}">
+    <div class="ee-em">📝</div><div><b>${esc(E.title)}</b><span>${E.theory.length} вопросов + ${E.practice.length} практических · ответы полные и краткие</span>
+    ${st.known?`<div class="ee-prog"><i style="width:${Math.round(st.known/st.all*100)}%"></i></div><small>знаю ${st.known} из ${st.all}</small>`:''}</div><span class="chev">${I.chev}</span></button>`;
+}
+function examBody(it, mode){
+  if (mode==='short') return `<ul class="ex-short">${it.short.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  return `<div class="ex-full">${it.full.map(blockHTML).join('')}</div>`;
+}
+function examText(it){ return strip(it.q + ' ' + it.short.join(' ') + ' ' + it.full.map(blockText).join(' ')).toLowerCase().replace(/ё/g,'е'); }
+function examItemHTML(sid, it, kind){
+  const key = examKey(kind, it.n), kn = examKnown(sid)[key], mode = EXM[key] || examMode;
+  const lecs = (it.lec||[]).filter(id=>LEC[id]).map(id=>`<button class="ex-lec" data-go="${hashId(id)}">📖 Лекция ${LEC[id].num}</button>`).join('');
+  return `<details class="exq ${kn?'known':''}" data-key="${key}" id="ex-${key}">
+    <summary><span class="ex-n">${kind==='theory'?it.n:'П'+it.n}</span><b>${esc(it.q)}</b><span class="ex-ok">${kn?'✓':''}</span></summary>
+    <div class="ex-a">
+      <div class="mode ex-mode"><button class="${mode==='full'?'on':''}" data-exm="full" data-key="${key}">📖 Полный ответ</button><button class="${mode==='short'?'on':''}" data-exm="short" data-key="${key}">⚡ Кратко</button></div>
+      <div class="ex-body">${examBody(it, mode)}</div>
+      <div class="ex-foot">${lecs}<button class="ex-know ${kn?'on':''}" data-exknow="${key}">${kn?'✓ Знаю':'Отметить «знаю»'}</button></div>
+    </div></details>`;
+}
+function viewExam(s){
+  setAccent(s);
+  const E = EXAM[s.id];
+  topBar('Экзамен', 's-'+s.id, `<button class="icon-btn" data-go="otvet" aria-label="Быстрый ответ">⚡</button>`);
+  app.innerHTML = `
+    <div class="subj-head" style="background:linear-gradient(135deg, ${s.color}, ${s.ink})">
+      <div class="em">📝</div><h1>${esc(E.title)}</h1><p class="t">${esc(s.name)} · 👤 ${esc(s.teacher||'')}</p><p>${esc(E.sub)}</p>
+      <div class="ex-stat" id="exStat"></div></div>
+    <div class="mode ex-tabs"><button data-extab="theory" class="${examTab==='theory'?'on':''}">Теория · ${E.theory.length}</button><button data-extab="practice" class="${examTab==='practice'?'on':''}">Практика · ${E.practice.length}</button></div>
+    <div class="search ex-search">${I.search}<input id="exq" type="search" placeholder="Найти вопрос: стерилизация, отходы, бикс…" autocomplete="off" enterkeyhint="search"></div>
+    <div class="ex-tools">
+      <div class="mode ex-gmode"><button data-exg="full" class="${examMode==='full'?'on':''}">📖 Все полные</button><button data-exg="short" class="${examMode==='short'?'on':''}">⚡ Все краткие</button></div>
+      <div class="actions">
+        <button class="chip" data-exact="open">Раскрыть все</button><button class="chip" data-exact="close">Свернуть</button>
+        <button class="chip ${examOnlyNew?'on':''}" data-exact="new">Только незнакомые</button>
+        <button class="chip" data-exact="pdf">${I.pdf} PDF полный</button><button class="chip" data-exact="pdf-short">${I.pdf} PDF краткий</button>
+      </div>
+    </div>
+    <div id="exList"></div>
+    <div class="navrow"><button data-act="totop">↑ Наверх</button><button data-go="s-${s.id}">📚 Лекции</button><button data-go="otvet">⚡ Быстрый ответ</button><button data-go="">${I.home} Главная</button></div>`;
+  const inp = $('#exq'); inp.value = examQ;
+  let tmr; inp.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { examQ = inp.value; renderExamList(s); }, 120); });
+  renderExamList(s);
+  if (pendingExam){ const k = pendingExam; pendingExam = null; const el = $('#ex-'+k); if (el){ el.open = true; requestAnimationFrame(()=>el.scrollIntoView({block:'start'})); } }
+}
+function renderExamList(s){
+  const E = EXAM[s.id], box = $('#exList'); if (!box) return;
+  const st = examStats(s.id), stEl = $('#exStat');
+  if (stEl) stEl.innerHTML = `<div class="ee-prog light"><i style="width:${Math.round(st.known/st.all*100)}%"></i></div><small>Знаю ${st.known} из ${st.all}</small>`;
+  const q = examQ.trim().toLowerCase().replace(/ё/g,'е'), words = q.split(/\s+/).filter(w=>w.length>1).map(w=>w.length>5?w.slice(0,w.length-2):w);
+  const kn = examKnown(s.id);
+  let list = E[examTab];
+  if (q) {
+    // поиск сразу по обоим разделам
+    list = [...E.theory.map(it=>[it,'theory']), ...E.practice.map(it=>[it,'practice'])].filter(([it]) => { const t = it._t || (it._t = examText(it)); return words.every(w => t.includes(w)); });
+    box.innerHTML = list.length ? `<div class="section-label">Найдено: ${list.length}</div>` + list.map(([it,k]) => examItemHTML(s.id, it, k)).join('') : `<div class="empty">🤔 Ничего не нашлось. Попробуй другое слово.</div>`;
+    return;
+  }
+  if (examOnlyNew) list = list.filter(it => !kn[examKey(examTab, it.n)]);
+  box.innerHTML = list.length ? list.map(it => examItemHTML(s.id, it, examTab)).join('') : `<div class="empty">🎉 Все вопросы этого раздела отмечены как выученные!</div>`;
+}
+function examFind(sid, key){ const E = EXAM[sid]; return (key[0]==='t' ? E.theory : E.practice).find(it => it.n === +key.slice(1)); }
+function printableExam(sid, mode){
+  const E = EXAM[sid], s = SUBJ[sid];
+  const part = (arr, kind, title) => `<h1 class="part">${title}</h1>` + arr.map(it => `<div class="q"><h2>${kind==='theory'?it.n:'П'+it.n}. ${esc(it.q)}</h2>${mode==='short' ? `<ul>${it.short.map(x=>`<li>${x}</li>`).join('')}</ul>` : it.full.map(b=>blockHTML(b).replace('class="tbl"','')).join('')}</div>`).join('');
+  return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>${esc(E.title)}${mode==='short'?' — кратко':''}</title><style>
+@page{size:A4;margin:15mm 14mm}
+body{font-family:"Golos Text",Inter,"Segoe UI",Roboto,Arial,sans-serif;color:#1d2030;line-height:1.45;font-size:10.8pt;max-width:780px;margin:0 auto;padding:16px}
+.cover{border-radius:14px;padding:18px 20px;color:#fff;background:linear-gradient(135deg,${s.color},${s.ink});-webkit-print-color-adjust:exact;print-color-adjust:exact;margin-bottom:10px}
+.cover h1{margin:0 0 6px;font-size:21pt} .cover p{margin:0;opacity:.92}
+h1.part{font-size:16pt;color:${s.ink};margin:22px 0 6px;break-after:avoid;border-bottom:2px solid ${s.soft};padding-bottom:4px}
+.q{margin:12px 0 14px;${mode==='short'?'break-inside:avoid;':''}}
+.q h2{font-size:12pt;margin:0 0 6px;color:${s.ink};break-after:avoid}
+.q ul,.q ol{margin:4px 0 6px;padding-left:20px} .q li{margin:2px 0}
+h3{font-size:11pt;margin:8px 0 4px}
+.box{border-radius:8px;padding:6px 10px;margin:6px 0;border-left:4px solid;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.box .tag{display:block;font-size:8pt;font-weight:800;text-transform:uppercase}
+.sut{background:#fdecef;border-color:#e0527a}.simple{background:#e7f6ea;border-color:#3f9e5c}.imp{background:#fff4d9;border-color:#e0a000}.fact{background:#eef3ff;border-color:#5b7fd6}
+.note{font-size:9.5pt;color:#6a6f82} p{margin:4px 0}
+table{border-collapse:collapse;width:100%;font-size:9.5pt;margin:6px 0;break-inside:avoid}
+th{background:${s.soft};color:${s.ink};text-align:left;padding:5px 7px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+td{padding:5px 7px;border-bottom:1px solid #e6e4ef;vertical-align:top}
+figure{text-align:center;margin:8px 0;break-inside:avoid} figure svg{max-width:100%;height:auto}
+</style></head><body>
+<div class="cover"><h1>📝 ${esc(E.title)}</h1><p>${esc(s.name)} · ${esc(s.teacher||'')}</p><p>${E.theory.length} вопросов по теории + ${E.practice.length} практических заданий · ${mode==='short'?'краткие ответы':'полные ответы'}</p></div>
+${part(E.theory,'theory','Теория')}${part(E.practice,'practice','Практические задания')}
+</body></html>`;
 }
 
 let lecTab = 'notes';
@@ -836,6 +947,7 @@ function route(){
   if (h === 'otvet') viewQuick();
   else if (h === 'raspisanie' && typeof SCHEDULE !== 'undefined') viewSchedule();
   else if (h.startsWith('s-') && SUBJ[h.slice(2)]) viewSubject(SUBJ[h.slice(2)]);
+  else if (h.startsWith('exam-') && typeof EXAM !== 'undefined' && EXAM[h.slice(5)] && SUBJ[h.slice(5)]) viewExam(SUBJ[h.slice(5)]);
   else if (LEC[h] && !LEC[h].soon) viewLecture(LEC[h], secIdx);
   else viewHome();
   if (secIdx==null || secIdx<0) window.scrollTo(0,0);
@@ -868,6 +980,31 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-act="totop"]')){ window.scrollTo({top:0, behavior:'smooth'}); return; }
   const md = e.target.closest('[data-mode]');
   if (md){ noteMode = md.dataset.mode; store.set('noteMode', noteMode); const l = LEC[(location.hash||'').slice(1)]; if (l) renderNotes(l, $('#pane')); return; }
+  const exm = e.target.closest('[data-exm]');
+  if (exm){ const k = exm.dataset.key, sid = (location.hash||'').slice(6), it = examFind(sid, k); if (!it) return;
+    EXM[k] = exm.dataset.exm; const d = exm.closest('.exq'); d.querySelectorAll('[data-exm]').forEach(b=>b.classList.toggle('on', b===exm)); d.querySelector('.ex-body').innerHTML = examBody(it, EXM[k]); return; }
+  const exg = e.target.closest('[data-exg]');
+  if (exg){ examMode = exg.dataset.exg; store.set('examMode', examMode); Object.keys(EXM).forEach(k=>delete EXM[k]);
+    document.querySelectorAll('[data-exg]').forEach(b=>b.classList.toggle('on', b===exg));
+    const sid = (location.hash||'').slice(6);
+    document.querySelectorAll('.exq').forEach(d => { const it = examFind(sid, d.dataset.key); d.querySelectorAll('[data-exm]').forEach(b=>b.classList.toggle('on', b.dataset.exm===examMode)); d.querySelector('.ex-body').innerHTML = examBody(it, examMode); });
+    toast(examMode==='full' ? '📖 Полные ответы' : '⚡ Краткие ответы'); return; }
+  const ext = e.target.closest('[data-extab]');
+  if (ext){ examTab = ext.dataset.extab; document.querySelectorAll('[data-extab]').forEach(b=>b.classList.toggle('on', b===ext)); renderExamList(SUBJ[(location.hash||'').slice(6)]); return; }
+  const exk = e.target.closest('[data-exknow]');
+  if (exk){ const sid = (location.hash||'').slice(6), k = exk.dataset.exknow, all = store.get('examKnown',{}); all[sid] = all[sid]||{}; all[sid][k] = !all[sid][k]; if (!all[sid][k]) delete all[sid][k]; store.set('examKnown', all);
+    const on = !!all[sid][k], d = exk.closest('.exq'); d.classList.toggle('known', on); exk.classList.toggle('on', on); exk.textContent = on ? '✓ Знаю' : 'Отметить «знаю»'; d.querySelector('.ex-ok').textContent = on ? '✓' : '';
+    const st = examStats(sid), stEl = $('#exStat'); if (stEl) stEl.innerHTML = `<div class="ee-prog light"><i style="width:${Math.round(st.known/st.all*100)}%"></i></div><small>Знаю ${st.known} из ${st.all}</small>`;
+    if (on){ toast('✓ Отмечено'); if (examOnlyNew) setTimeout(()=>{ d.open = false; renderExamList(SUBJ[sid]); }, 350); } return; }
+  const exa = e.target.closest('[data-exact]');
+  if (exa){ const a = exa.dataset.exact, sid = (location.hash||'').slice(6);
+    if (a==='open') document.querySelectorAll('.exq').forEach(d=>d.open=true);
+    else if (a==='close') document.querySelectorAll('.exq').forEach(d=>d.open=false);
+    else if (a==='new'){ examOnlyNew = !examOnlyNew; exa.classList.toggle('on', examOnlyNew); renderExamList(SUBJ[sid]); }
+    else if (a==='pdf' || a==='pdf-short'){ const sh = a==='pdf-short'; openFile(`pdf/exam-${sid}${sh?'-short':''}.pdf`, `${EXAM[sid].title}${sh?' — кратко':''}.pdf`); }
+    return; }
+  const exo = e.target.closest('[data-exopen]');
+  if (exo){ pendingExam = exo.dataset.exopen.split('|')[1]; examQ = ''; const sid = exo.dataset.exopen.split('|')[0]; examTab = pendingExam[0]==='t' ? 'theory' : 'practice'; go('exam-'+sid); return; }
   const qc = e.target.closest('[data-qsubj]');
   if (qc){ quickSubj = qc.dataset.qsubj; document.querySelectorAll('.qchip').forEach(c=>c.classList.toggle('on', c===qc)); renderQuick(); return; }
   const t = e.target.closest('[data-go],[data-tab],[data-act],[data-sec-jump]');
@@ -901,6 +1038,7 @@ document.addEventListener('click', e => {
 });
 
 window.__printable = id => printableHTML(LEC[id]);
+window.__printableExam = (sid, mode) => printableExam(sid, mode||'full');
 window.__ask = (q,s) => answerSearch(q,s||'').map(r=>[r.sc.toFixed(2), r.it.l.id, r.it.kind, r.it.q]);
 if (!window.claude && 'serviceWorker' in navigator && location.protocol==='https:'){
   // новая версия сайта: как только свежий service worker взял управление — один раз перезагружаемся

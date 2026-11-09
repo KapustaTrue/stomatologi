@@ -235,6 +235,43 @@ html.vw-open .fab-top{display:none}
 a.qopen{display:inline-block;text-decoration:none}
 a.res{text-decoration:none;color:inherit}
 .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px}
+
+/* экзамен */
+.exam-entry{display:flex;gap:14px;align-items:center;width:100%;text-align:left;background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin:0 0 16px;border:2px solid var(--c)}
+.exam-entry .ee-em{width:46px;height:46px;border-radius:14px;background:var(--cs);display:grid;place-items:center;font-size:24px;flex:none}
+.exam-entry b{display:block;font-size:16px;line-height:1.3;color:var(--ci)}
+.exam-entry span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.exam-entry small{display:block;font-size:12px;font-weight:700;color:var(--ci);margin-top:3px}
+.exam-entry>div:nth-child(2){flex:1;min-width:0}
+.ee-prog{height:6px;border-radius:4px;background:var(--cs);margin-top:8px;overflow:hidden}
+.ee-prog i{display:block;height:100%;background:var(--c);border-radius:4px}
+.ee-prog.light{background:rgba(255,255,255,.3)} .ee-prog.light i{background:#fff}
+.ex-stat small{display:block;font-weight:700;margin-top:4px;font-size:13px}
+.ex-tabs{margin:0 0 10px}
+.ex-search{margin:0 0 8px}
+.ex-tools .actions{margin:8px 0 12px}
+.chip.on{background:var(--acc-soft);color:var(--acc-ink)}
+.exq{background:var(--card);border-radius:16px;box-shadow:var(--shadow);margin-bottom:9px;overflow:hidden;border-left:4px solid transparent}
+.exq.known{border-left-color:#3f9e5c}
+.exq summary{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;cursor:pointer;list-style:none}
+.exq summary::-webkit-details-marker{display:none}
+.exq summary b{flex:1;font-size:15px;line-height:1.35;font-weight:650}
+.ex-n{min-width:34px;height:30px;padding:0 6px;border-radius:10px;background:var(--acc-soft);color:var(--acc-ink);font-weight:800;font-size:14px;display:grid;place-items:center;flex:none}
+.ex-ok{color:#3f9e5c;font-weight:800;font-size:17px;min-width:14px}
+.exq[open] summary{border-bottom:1px solid var(--line, rgba(127,127,127,.15))}
+.ex-a{padding:4px 14px 14px}
+.ex-mode{margin:8px 0 10px;box-shadow:none;background:var(--bg)}
+.ex-mode button{height:36px;font-size:13.5px}
+.ex-short{margin:4px 0 6px;padding-left:20px;font-size:15.5px;line-height:1.5}
+.ex-short li{margin:6px 0}
+.ex-full{font-size:15px;line-height:1.55}
+.ex-full p{margin:8px 0} .ex-full ul,.ex-full ol{padding-left:20px;margin:6px 0} .ex-full li{margin:4px 0}
+.ex-full h3{font-size:15.5px;margin:14px 0 6px}
+.ex-foot{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.ex-lec,.ex-know{height:36px;padding:0 12px;border-radius:11px;background:var(--bg);font-weight:650;font-size:13.5px}
+.ex-know{margin-left:auto;background:var(--acc-soft);color:var(--acc-ink)}
+.ex-know.on{background:#3f9e5c;color:#fff}
+figure svg text{font-family:"Golos Text",Inter,sans-serif}
 </style>
 </head>
 <body>

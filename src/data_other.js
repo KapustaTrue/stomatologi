@@ -586,4 +586,4 @@ const INF = {
   lectures: [ { id: 'inf-1', num: 1, title: 'Материалы скоро появятся', sub: 'Скоро появится', soon: true } ],
 };
 
-const SUBJECTS = [GEN, IMM, ANAT, INF];
+const SUBJECTS = [GEN, IMM, ANAT, NURSE, INF];
