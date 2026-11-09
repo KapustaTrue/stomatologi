@@ -25,7 +25,7 @@
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.55}
 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 a{color:var(--acc-ink)}
-.wrap{max-width:760px;margin:0 auto;padding:0 16px calc(40px + env(safe-area-inset-bottom))}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px calc(84px + env(safe-area-inset-bottom))}
 /* top bar */
 .top{position:sticky;top:0;z-index:20;background:rgba(245,244,250,.88);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);padding-top:env(safe-area-inset-top);border-bottom:1px solid transparent}
 .top.scrolled{border-bottom-color:var(--line)}
@@ -209,6 +209,29 @@ mark{background:#ffe58a;color:inherit;border-radius:3px;padding:0 1px}
 .pcount{font-size:13px;color:var(--muted);align-self:center}
 .fullcard{display:flex;gap:14px;align-items:center;background:linear-gradient(135deg,var(--acc-soft),#fff);border-radius:var(--r);padding:18px 16px;box-shadow:var(--shadow);margin:12px 0;text-decoration:none;color:var(--ink)}
 .fullcard .big{font-size:34px} .fullcard b{display:block;font-size:17px} .fullcard span{font-size:13px;color:var(--muted)}
+/* навигация в полной версии */
+.navrow{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+.navrow button{height:46px;border-radius:14px;background:var(--card);box-shadow:var(--shadow);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.navrow svg{width:17px;height:17px}
+@media (min-width:600px){.navrow{grid-template-columns:repeat(4,1fr)}}
+.fab-top{position:fixed;right:max(16px, env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));z-index:25;width:48px;height:48px;border-radius:16px;background:#1d2030;color:#fff;font-size:22px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.22);opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s,transform .2s}
+.fab-top.show{opacity:1;transform:none;pointer-events:auto}
+/* просмотр страницы */
+html.vw-open,html.vw-open body{overflow:hidden}
+html.vw-open .fab-top{display:none}
+.viewer{position:fixed;inset:0;z-index:100;background:#14161f;display:flex;flex-direction:column;color:#fff}
+.vw-top,.vw-bot{flex:none;display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1d2030}
+.vw-top{padding-top:calc(10px + env(safe-area-inset-top))}
+.vw-bot{padding-bottom:calc(10px + env(safe-area-inset-bottom));justify-content:space-between}
+.vw-title{flex:1;min-width:0;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.8}
+.vw-btn{height:42px;min-width:42px;padding:0 12px;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:4px;flex:none}
+.vw-btn svg{width:19px;height:19px}
+.vw-btn:disabled{opacity:.3;cursor:default}
+.vw-count{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+.vw-stage{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:flex-start;justify-content:center;padding:10px}
+.vw-stage img{display:block;width:100%;max-width:900px;height:auto;margin:auto;border-radius:6px;background:#fff}
+.viewer.zoomed .vw-stage{display:block}
+.viewer.zoomed .vw-stage img{width:200%;max-width:none}
 .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px}
 </style>
 </head>
@@ -1419,7 +1442,7 @@ function renderNotes(l, pane, secIdx){
 function pagesHTML(dir, n, sizes, alt){
   let h = '';
   for (let i=1;i<=n;i++){ const p = String(i).padStart(2,'0'); const s = sizes && sizes[i-1] || [1100,1556];
-    h += `<a class="pg" href="${dir}/${p}.webp" target="_blank" rel="noopener"><img src="${dir}/${p}.webp" loading="${i<=2?'eager':'lazy'}" width="${s[0]}" height="${s[1]}" alt="${esc(alt)} — страница ${i}"></a>`; }
+    h += `<a class="pg" href="${dir}/${p}.webp" data-vdir="${dir}" data-vn="${n}" data-vi="${i}" data-vt="${esc(alt)}"><img src="${dir}/${p}.webp" loading="${i<=2?'eager':'lazy'}" width="${s[0]}" height="${s[1]}" alt="${esc(alt)} — страница ${i}"></a>`; }
   return h;
 }
 function renderFull(l, pane, toggle){
@@ -1437,9 +1460,82 @@ function renderFull(l, pane, toggle){
     <div class="actions"><button class="chip" data-act="dl-full" data-id="${l.id}">${I.pdf} Скачать полный PDF</button>
     ${F.pages?`<span class="pcount">${F.pages} стр. · нажми на страницу, чтобы увеличить</span>`:''}</div>
     ${body}
-    <div style="display:flex;gap:10px;margin-top:16px"><button class="primary" style="flex:1" data-tab="cards">🃏 Учить карточки</button><button class="secondary" style="flex:1" data-tab="quiz">✅ Пройти тест</button></div>`;
+    <div style="display:flex;gap:10px;margin-top:16px"><button class="primary" style="flex:1" data-tab="cards">🃏 Учить карточки</button><button class="secondary" style="flex:1" data-tab="quiz">✅ Пройти тест</button></div>
+    <div class="navrow">
+      <button data-act="totop">↑ Наверх</button>
+      <button data-mode="short">📄 Кратко</button>
+      <button data-go="s-${l.subject.id}">📚 Все лекции</button>
+      <button data-go="">${I.home} Главная</button>
+    </div>`;
   window.scrollTo(0,0);
 }
+
+/* просмотр страниц полной версии: внутри приложения, с кнопками назад / главная / листание */
+let VW = null;
+function openViewer(dir, n, i, title){
+  if (VW) return;
+  const el = document.createElement('div');
+  el.className = 'viewer'; el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true');
+  el.innerHTML = `
+    <div class="vw-top">
+      <button class="vw-btn" data-vw="close" aria-label="Назад">${I.back}<span>Назад</span></button>
+      <div class="vw-title">${esc(title)}</div>
+      <button class="vw-btn" data-vw="zoom" aria-label="Увеличить">🔍</button>
+      <button class="vw-btn" data-vw="home" aria-label="Главная">${I.home}</button>
+    </div>
+    <div class="vw-stage"><img alt=""></div>
+    <div class="vw-bot">
+      <button class="vw-btn" data-vw="prev" aria-label="Предыдущая страница">‹ Пред.</button>
+      <span class="vw-count"></span>
+      <button class="vw-btn" data-vw="next" aria-label="Следующая страница">След. ›</button>
+    </div>`;
+  document.body.appendChild(el);
+  document.documentElement.classList.add('vw-open');
+  VW = { el, dir, n:+n, i:+i, zoom:false, after:null };
+  history.pushState({vw:1}, '');
+  const stage = el.querySelector('.vw-stage');
+  let sx=0, sy=0, multi=false, lastTap=0;
+  stage.addEventListener('touchstart', e => { multi = e.touches.length>1; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
+  stage.addEventListener('touchend', e => {
+    if (multi || !VW || VW.zoom) return;
+    const t = e.changedTouches[0], dx = t.clientX-sx, dy = t.clientY-sy;
+    if (Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5) vwStep(dx<0?1:-1);
+    else if (Math.abs(dx)<10 && Math.abs(dy)<10){ const now = Date.now(); if (now-lastTap<300) vwZoom(); lastTap = now; }
+  }, {passive:true});
+  stage.addEventListener('dblclick', vwZoom);
+  vwDraw();
+}
+function vwDraw(){
+  const {el, dir, n, i} = VW, p = String(i).padStart(2,'0');
+  const img = el.querySelector('.vw-stage img');
+  img.src = `${dir}/${p}.webp`; img.alt = `Страница ${i}`;
+  el.querySelector('.vw-count').textContent = `${i} / ${n}`;
+  el.querySelector('[data-vw="prev"]').disabled = i<=1;
+  el.querySelector('[data-vw="next"]').disabled = i>=n;
+  el.querySelector('.vw-stage').scrollTo(0,0);
+  if (i<n){ const pre = new Image(); pre.src = `${dir}/${String(i+1).padStart(2,'0')}.webp`; }
+}
+function vwStep(d){ if (!VW) return; const j = VW.i+d; if (j<1 || j>VW.n) return; VW.i = j; vwDraw(); }
+function vwZoom(){ if (!VW) return; VW.zoom = !VW.zoom; VW.el.classList.toggle('zoomed', VW.zoom); }
+function vwRemove(){
+  if (!VW) return;
+  const {el, dir, i, after} = VW; VW = null;
+  el.remove(); document.documentElement.classList.remove('vw-open');
+  if (after!=null) go(after);
+  else { const pg = document.querySelector(`.pg[data-vdir="${dir}"][data-vi="${i}"]`); if (pg) pg.scrollIntoView({block:'center'}); }
+}
+function closeViewer(after){
+  if (!VW) return;
+  if (after!=null) VW.after = after;
+  if (history.state && history.state.vw) history.back(); else vwRemove();
+}
+window.addEventListener('popstate', () => { if (VW) vwRemove(); });
+document.addEventListener('keydown', e => {
+  if (!VW) return;
+  if (e.key==='Escape') closeViewer();
+  else if (e.key==='ArrowRight') vwStep(1);
+  else if (e.key==='ArrowLeft') vwStep(-1);
+});
 function openFile(url, name){
   const a = document.createElement('a'); a.href = url; a.download = name; a.target = '_blank'; a.rel = 'noopener';
   document.body.appendChild(a); a.click(); a.remove(); toast('Открываю PDF…');
@@ -1627,9 +1723,23 @@ function go(h){
   else location.hash = h;
 }
 window.addEventListener('hashchange', route);
-window.addEventListener('scroll', () => top.classList.toggle('scrolled', window.scrollY>4), {passive:true});
+const fabTop = document.createElement('button');
+fabTop.className = 'fab-top'; fabTop.dataset.act = 'totop'; fabTop.setAttribute('aria-label','Наверх'); fabTop.textContent = '↑';
+document.body.appendChild(fabTop);
+window.addEventListener('scroll', () => {
+  top.classList.toggle('scrolled', window.scrollY>4);
+  fabTop.classList.toggle('show', window.scrollY>900);
+}, {passive:true});
 
 document.addEventListener('click', e => {
+  const vb = e.target.closest('[data-vw]');
+  if (vb){ const a = vb.dataset.vw;
+    if (a==='close') closeViewer(); else if (a==='home') closeViewer(''); else if (a==='zoom') vwZoom();
+    else if (a==='prev') vwStep(-1); else if (a==='next') vwStep(1);
+    return; }
+  const pg = e.target.closest('a.pg[data-vdir]');
+  if (pg){ e.preventDefault(); openViewer(pg.dataset.vdir, pg.dataset.vn, pg.dataset.vi, pg.dataset.vt); return; }
+  if (e.target.closest('[data-act="totop"]')){ window.scrollTo({top:0, behavior:'smooth'}); return; }
   const md = e.target.closest('[data-mode]');
   if (md){ noteMode = md.dataset.mode; store.set('noteMode', noteMode); const l = LEC[(location.hash||'').slice(1)]; if (l) renderNotes(l, $('#pane')); return; }
   const qc = e.target.closest('[data-qsubj]');

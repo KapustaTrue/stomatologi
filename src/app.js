@@ -364,7 +364,7 @@ function renderNotes(l, pane, secIdx){
 function pagesHTML(dir, n, sizes, alt){
   let h = '';
   for (let i=1;i<=n;i++){ const p = String(i).padStart(2,'0'); const s = sizes && sizes[i-1] || [1100,1556];
-    h += `<a class="pg" href="${dir}/${p}.webp" target="_blank" rel="noopener"><img src="${dir}/${p}.webp" loading="${i<=2?'eager':'lazy'}" width="${s[0]}" height="${s[1]}" alt="${esc(alt)} — страница ${i}"></a>`; }
+    h += `<a class="pg" href="${dir}/${p}.webp" data-vdir="${dir}" data-vn="${n}" data-vi="${i}" data-vt="${esc(alt)}"><img src="${dir}/${p}.webp" loading="${i<=2?'eager':'lazy'}" width="${s[0]}" height="${s[1]}" alt="${esc(alt)} — страница ${i}"></a>`; }
   return h;
 }
 function renderFull(l, pane, toggle){
@@ -382,9 +382,82 @@ function renderFull(l, pane, toggle){
     <div class="actions"><button class="chip" data-act="dl-full" data-id="${l.id}">${I.pdf} Скачать полный PDF</button>
     ${F.pages?`<span class="pcount">${F.pages} стр. · нажми на страницу, чтобы увеличить</span>`:''}</div>
     ${body}
-    <div style="display:flex;gap:10px;margin-top:16px"><button class="primary" style="flex:1" data-tab="cards">🃏 Учить карточки</button><button class="secondary" style="flex:1" data-tab="quiz">✅ Пройти тест</button></div>`;
+    <div style="display:flex;gap:10px;margin-top:16px"><button class="primary" style="flex:1" data-tab="cards">🃏 Учить карточки</button><button class="secondary" style="flex:1" data-tab="quiz">✅ Пройти тест</button></div>
+    <div class="navrow">
+      <button data-act="totop">↑ Наверх</button>
+      <button data-mode="short">📄 Кратко</button>
+      <button data-go="s-${l.subject.id}">📚 Все лекции</button>
+      <button data-go="">${I.home} Главная</button>
+    </div>`;
   window.scrollTo(0,0);
 }
+
+/* просмотр страниц полной версии: внутри приложения, с кнопками назад / главная / листание */
+let VW = null;
+function openViewer(dir, n, i, title){
+  if (VW) return;
+  const el = document.createElement('div');
+  el.className = 'viewer'; el.setAttribute('role','dialog'); el.setAttribute('aria-modal','true');
+  el.innerHTML = `
+    <div class="vw-top">
+      <button class="vw-btn" data-vw="close" aria-label="Назад">${I.back}<span>Назад</span></button>
+      <div class="vw-title">${esc(title)}</div>
+      <button class="vw-btn" data-vw="zoom" aria-label="Увеличить">🔍</button>
+      <button class="vw-btn" data-vw="home" aria-label="Главная">${I.home}</button>
+    </div>
+    <div class="vw-stage"><img alt=""></div>
+    <div class="vw-bot">
+      <button class="vw-btn" data-vw="prev" aria-label="Предыдущая страница">‹ Пред.</button>
+      <span class="vw-count"></span>
+      <button class="vw-btn" data-vw="next" aria-label="Следующая страница">След. ›</button>
+    </div>`;
+  document.body.appendChild(el);
+  document.documentElement.classList.add('vw-open');
+  VW = { el, dir, n:+n, i:+i, zoom:false, after:null };
+  history.pushState({vw:1}, '');
+  const stage = el.querySelector('.vw-stage');
+  let sx=0, sy=0, multi=false, lastTap=0;
+  stage.addEventListener('touchstart', e => { multi = e.touches.length>1; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
+  stage.addEventListener('touchend', e => {
+    if (multi || !VW || VW.zoom) return;
+    const t = e.changedTouches[0], dx = t.clientX-sx, dy = t.clientY-sy;
+    if (Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5) vwStep(dx<0?1:-1);
+    else if (Math.abs(dx)<10 && Math.abs(dy)<10){ const now = Date.now(); if (now-lastTap<300) vwZoom(); lastTap = now; }
+  }, {passive:true});
+  stage.addEventListener('dblclick', vwZoom);
+  vwDraw();
+}
+function vwDraw(){
+  const {el, dir, n, i} = VW, p = String(i).padStart(2,'0');
+  const img = el.querySelector('.vw-stage img');
+  img.src = `${dir}/${p}.webp`; img.alt = `Страница ${i}`;
+  el.querySelector('.vw-count').textContent = `${i} / ${n}`;
+  el.querySelector('[data-vw="prev"]').disabled = i<=1;
+  el.querySelector('[data-vw="next"]').disabled = i>=n;
+  el.querySelector('.vw-stage').scrollTo(0,0);
+  if (i<n){ const pre = new Image(); pre.src = `${dir}/${String(i+1).padStart(2,'0')}.webp`; }
+}
+function vwStep(d){ if (!VW) return; const j = VW.i+d; if (j<1 || j>VW.n) return; VW.i = j; vwDraw(); }
+function vwZoom(){ if (!VW) return; VW.zoom = !VW.zoom; VW.el.classList.toggle('zoomed', VW.zoom); }
+function vwRemove(){
+  if (!VW) return;
+  const {el, dir, i, after} = VW; VW = null;
+  el.remove(); document.documentElement.classList.remove('vw-open');
+  if (after!=null) go(after);
+  else { const pg = document.querySelector(`.pg[data-vdir="${dir}"][data-vi="${i}"]`); if (pg) pg.scrollIntoView({block:'center'}); }
+}
+function closeViewer(after){
+  if (!VW) return;
+  if (after!=null) VW.after = after;
+  if (history.state && history.state.vw) history.back(); else vwRemove();
+}
+window.addEventListener('popstate', () => { if (VW) vwRemove(); });
+document.addEventListener('keydown', e => {
+  if (!VW) return;
+  if (e.key==='Escape') closeViewer();
+  else if (e.key==='ArrowRight') vwStep(1);
+  else if (e.key==='ArrowLeft') vwStep(-1);
+});
 function openFile(url, name){
   const a = document.createElement('a'); a.href = url; a.download = name; a.target = '_blank'; a.rel = 'noopener';
   document.body.appendChild(a); a.click(); a.remove(); toast('Открываю PDF…');
@@ -572,9 +645,23 @@ function go(h){
   else location.hash = h;
 }
 window.addEventListener('hashchange', route);
-window.addEventListener('scroll', () => top.classList.toggle('scrolled', window.scrollY>4), {passive:true});
+const fabTop = document.createElement('button');
+fabTop.className = 'fab-top'; fabTop.dataset.act = 'totop'; fabTop.setAttribute('aria-label','Наверх'); fabTop.textContent = '↑';
+document.body.appendChild(fabTop);
+window.addEventListener('scroll', () => {
+  top.classList.toggle('scrolled', window.scrollY>4);
+  fabTop.classList.toggle('show', window.scrollY>900);
+}, {passive:true});
 
 document.addEventListener('click', e => {
+  const vb = e.target.closest('[data-vw]');
+  if (vb){ const a = vb.dataset.vw;
+    if (a==='close') closeViewer(); else if (a==='home') closeViewer(''); else if (a==='zoom') vwZoom();
+    else if (a==='prev') vwStep(-1); else if (a==='next') vwStep(1);
+    return; }
+  const pg = e.target.closest('a.pg[data-vdir]');
+  if (pg){ e.preventDefault(); openViewer(pg.dataset.vdir, pg.dataset.vn, pg.dataset.vi, pg.dataset.vt); return; }
+  if (e.target.closest('[data-act="totop"]')){ window.scrollTo({top:0, behavior:'smooth'}); return; }
   const md = e.target.closest('[data-mode]');
   if (md){ noteMode = md.dataset.mode; store.set('noteMode', noteMode); const l = LEC[(location.hash||'').slice(1)]; if (l) renderNotes(l, $('#pane')); return; }
   const qc = e.target.closest('[data-qsubj]');
