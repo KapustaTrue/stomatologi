@@ -125,9 +125,9 @@ function schedNow(){ // что сейчас: {state, pair, day}
   const di = schedToday(), now = new Date(), m = now.getHours()*60 + now.getMinutes();
   if (di < 0) return { state: di === -3 ? 'old' : 'weekend', day: di };
   const pairs = SCHEDULE.days[di] || [];
-  for (const p of pairs){ const [a,b] = SCHEDULE.times[p[0]]; if (m >= toMin(a) && m < toMin(b)) return { state:'now', pair:p, day:di, left: toMin(b)-m }; }
-  const next = pairs.find(p => toMin(SCHEDULE.times[p[0]][0]) > m);
-  if (next) return { state: m < toMin(SCHEDULE.times[pairs[0][0]][0]) ? 'first' : 'next', pair:next, day:di, inMin: toMin(SCHEDULE.times[next[0]][0]) - m };
+  for (const p of pairs){ const [a,b] = SCHEDULE.times[p.n]; if (m >= toMin(a) && m < toMin(b)) return { state:'now', pair:p, day:di, left: toMin(b)-m }; }
+  const next = pairs.find(p => toMin(SCHEDULE.times[p.n][0]) > m);
+  if (next) return { state: m < toMin(SCHEDULE.times[pairs[0].n][0]) ? 'first' : 'next', pair:next, day:di, inMin: toMin(SCHEDULE.times[next.n][0]) - m };
   // сегодня всё — ищем следующий учебный день недели
   for (let j = di+1; j < 6; j++) if ((SCHEDULE.days[j]||[]).length) return { state:'done', day:di, nextDay:j, pair: SCHEDULE.days[j][0] };
   return { state:'done', day:di };
@@ -135,18 +135,57 @@ function schedNow(){ // что сейчас: {state, pair, day}
 const shortName = n => n.replace('Медицинская генетика','Медгенетика');
 function schedBtnText(){
   const s = schedNow(); if (!s) return 'Пары на неделю';
-  const T = p => SCHEDULE.times[p[0]];
-  if (s.state==='now') return `<b class="live">● Сейчас</b> ${esc(shortName(s.pair[1]))} · ауд. ${esc(s.pair[2])} · до ${T(s.pair)[1]}`;
-  if (s.state==='next') return `Дальше: ${esc(shortName(s.pair[1]))} в ${T(s.pair)[0]} · ауд. ${esc(s.pair[2])}`;
-  if (s.state==='first') return `Сегодня с ${T(s.pair)[0]}: ${esc(shortName(s.pair[1]))} · ауд. ${esc(s.pair[2])}`;
+  const T = p => SCHEDULE.times[p.n];
+  if (s.state==='now') return `<b class="live">● Сейчас</b> ${esc(shortName(s.pair.subj))} · ауд. ${esc(s.pair.room)} · до ${T(s.pair)[1]}`;
+  if (s.state==='next') return `Дальше: ${esc(shortName(s.pair.subj))} в ${T(s.pair)[0]} · ауд. ${esc(s.pair.room)}`;
+  if (s.state==='first') return `Сегодня с ${T(s.pair)[0]}: ${esc(shortName(s.pair.subj))} · ауд. ${esc(s.pair.room)}`;
   if (s.state==='done') return s.nextDay!=null ? `На сегодня всё 🎉 ${DAY_FULL[s.nextDay]} — с ${T(s.pair)[0]}` : 'На этой неделе пары закончились 🎉';
   if (s.state==='old') return 'Ждём расписание на новую неделю';
   return `Неделя ${schedWeekLabel()}`;
 }
+
+/* ===== домашка из Telegram (homework.json, обновляет бот) ===== */
+const HW_URL = 'https://raw.githubusercontent.com/KapustaTrue/stomatologi/main/homework.json';
+let HW = store.get('hw', []);
+const isoD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const subjKey = name => { const s = schedSubj(name); return s ? s.id : name.toLowerCase().slice(0,5); };
+function hwTarget(it){
+  if (it.date) return { date: it.date, pair: it.pair };
+  if (typeof SCHEDULE === 'undefined' || !it.created) return null;
+  // без даты: первая пара по предмету после того, как задали (как в боте)
+  const cr = new Date(it.created), crD = isoD(cr), m = cr.getHours()*60 + cr.getMinutes(), key = subjKey(it.subj);
+  const ps = []; SCHEDULE.days.forEach((day, i) => day.forEach(p => { if (subjKey(p.subj) === key) ps.push({ date: isoD(schedDate(i)), n: p.n }); }));
+  const started = ps.some(p => p.date === crD && toMin(SCHEDULE.times[p.n][0]) <= m);
+  for (const p of ps){
+    if (p.date < crD) continue;
+    if (p.date === crD && (started || toMin(SCHEDULE.times[p.n][0]) <= m)) continue;
+    return { date: p.date, pair: Math.min(...ps.filter(q => q.date === p.date).map(q => q.n)) };
+  }
+  return null;
+}
+const hwFor = (date, n) => HW.filter(it => { const t = hwTarget(it); return t && t.date === date && t.pair === n; });
+function hwActive(){ const today = isoD(new Date()); return HW.map(it => ({ it, t: hwTarget(it) })).filter(x => !x.t || x.t.date >= today)
+  .sort((a, b) => (a.t ? a.t.date + String(a.t.pair).padStart(2,'0') : '9') < (b.t ? b.t.date + String(b.t.pair).padStart(2,'0') : '9') ? -1 : 1); }
+let hwLoading = false;
+function loadHW(){
+  if (hwLoading) return; hwLoading = true;
+  fetch(HW_URL + '?t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : Promise.reject()).catch(() => fetch('homework.json?t=' + Date.now()).then(r => r.ok ? r.json() : null))
+    .then(d => { if (!d || !Array.isArray(d.items)) return;
+      const changed = JSON.stringify(d.items) !== JSON.stringify(HW); HW = d.items; store.set('hw', HW);
+      if (!changed) return;
+      const h = (location.hash || '').slice(1);
+      if (h === 'raspisanie') viewSchedule(true); else if (!h) { const b = document.querySelector('.sched-btn .sb-hw-slot'); if (b) b.outerHTML = hwBadge(); } })
+    .catch(() => {}).finally(() => { hwLoading = false; });
+}
+function hwBadge(){ const n = hwActive().length; return `<span class="sb-hw-slot">${n ? `<span class="sb-hw">📝 ${n}</span>` : ''}</span>`; }
+
 let schedDay = null;
-function viewSchedule(){
+function viewSchedule(keep){
   setAccent(null);
   topBar('📅 Расписание', '');
+  if (!keep) loadHW();
+  const sy = window.scrollY;
   const today = schedToday(), st = schedNow();
   if (schedDay == null) schedDay = today >= 0 ? today : 0;
   const drawDay = () => {
@@ -155,14 +194,15 @@ function viewSchedule(){
     let html = `<div class="sch-dayhead"><h2>${DAY_FULL[schedDay]}</h2><span>${d.getDate()} ${MON_GEN[d.getMonth()]}${isToday ? ' · сегодня' : ''}</span></div>`;
     if (!pairs.length) html += `<div class="sch-free"><div class="big">🎉</div><b>Пар нет</b><p>Можно выспаться. Или повторить конспект — решать тебе.</p></div>`;
     pairs.forEach((p, k) => {
-      const [a, b] = SCHEDULE.times[p[0]] || ['', ''], c = schedStyle(p[1]);
-      if (k && p[0] - pairs[k-1][0] > 1) html += `<div class="sch-gap">☕ Окно — ${p[0] - pairs[k-1][0] - 1 === 1 ? 'одна пара' : (p[0] - pairs[k-1][0] - 1) + ' пары'}</div>`;
+      const [a, b] = SCHEDULE.times[p.n] || ['', ''], c = schedStyle(p.subj);
+      if (k && p.n - pairs[k-1].n > 1) html += `<div class="sch-gap">☕ Окно — ${p.n - pairs[k-1].n - 1 === 1 ? 'одна пара' : (p.n - pairs[k-1].n - 1) + ' пары'}</div>`;
       const live = isToday && m >= toMin(a) && m < toMin(b), past = isToday && m >= toMin(b);
       const prog = live ? Math.round((m - toMin(a)) / (toMin(b) - toMin(a)) * 100) : 0;
       html += `<${c.id ? `button data-go="s-${c.id}"` : 'div'} class="sch-pair${live ? ' live' : ''}${past ? ' past' : ''}" style="--c:${c.c};--ci:${c.ci};--cs:${c.cs}">
-        <div class="sch-time"><b>${a}</b><span>${b}</span><i>${p[0]} пара</i></div>
-        <div class="sch-body"><div class="sch-name"><span class="sch-em">${c.em}</span>${esc(p[1])}</div>
-          <div class="sch-meta"><span class="sch-room">ауд. ${esc(p[2])}</span><span>👤 ${esc(p[3])}</span></div>
+        <div class="sch-time"><b>${a}</b><span>${b}</span><i>${p.n} пара</i></div>
+        <div class="sch-body"><div class="sch-name"><span class="sch-em">${c.em}</span>${esc(p.subj)}</div>
+          <div class="sch-meta"><span class="sch-room">ауд. ${esc(p.room)}</span><span>👤 ${esc(p.teacher)}</span></div>
+          ${hwFor(isoD(d), p.n).map(h => `<div class="sch-hw"><span class="sch-hw-ic">📝</span><div><b>ДЗ:</b> ${esc(h.text)}${h.author ? `<small> — ${esc(h.author)}</small>` : ''}</div></div>`).join('')}
           ${live ? `<div class="sch-live"><span>● Идёт сейчас · осталось ${toMin(b) - m} мин</span><div class="sch-prog"><i style="width:${prog}%"></i></div></div>` : ''}
         </div></${c.id ? 'button' : 'div'}>`;
     });
@@ -174,10 +214,16 @@ function viewSchedule(){
     <div class="sch-head"><h1>📅 Расписание</h1><p>С-201 · неделя ${schedWeekLabel()}</p></div>
     ${old ? `<div class="sch-warn">⏳ Это расписание прошлой недели — новое ещё не добавили.</div>` : ''}
     <div class="sch-tabs">${DAY_SHORT.map((n, i) => { const d = schedDate(i); const cnt = (SCHEDULE.days[i]||[]).length;
-      return `<button class="sch-tab${i === today ? ' today' : ''}" data-sday="${i}"><b>${n}</b><span>${d.getDate()}</span><i>${cnt ? '•'.repeat(Math.min(cnt, 5)) : '—'}</i></button>`; }).join('')}</div>
-    <div id="schday"></div>`;
+      return `<button class="sch-tab${i === today ? ' today' : ''}" data-sday="${i}"><b>${n}</b><span>${d.getDate()}</span><i>${cnt ? '•'.repeat(Math.min(cnt, 5)) : '—'}</i>${HW.some(it => { const t = hwTarget(it); return t && t.date === isoD(d); }) ? '<em class="sch-tab-hw">📝</em>' : ''}</button>`; }).join('')}</div>
+    <div id="schday"></div>
+    ${(() => { const act = hwActive(); return `<div class="sch-hwlist"><h3>📝 Домашка${act.length ? ` · ${act.length}` : ''}</h3>
+      ${act.length ? act.map(({it, t}) => { const di = t ? SCHEDULE.days.findIndex((_, i) => isoD(schedDate(i)) === t.date) : -1, c = schedStyle(it.subj);
+        return `<button class="sch-hwitem" ${di >= 0 ? `data-sday="${di}"` : ''} style="--c:${c.c};--cs:${c.cs};--ci:${c.ci}"><span class="when">${t ? `${DAY_SHORT[di] || ''} ${+t.date.slice(8)} · ${t.pair} пара` : 'ближайшая пара'}</span><b>${c.em} ${esc(it.subj)}</b><span class="txt">${esc(it.text)}</span></button>`; }).join('')
+        : '<p class="sch-hw-empty">Пока ничего не задали 🎉</p>'}
+      <div class="sch-hw-how">Как добавить: напиши в чате группы <code>#дз микра выучить таблицу вакцин</code> — бот сам прикрепит ДЗ к ближайшей паре.</div></div>`; })()}`;
   drawDay();
-  app.onclick = e => { const b = e.target.closest('[data-sday]'); if (b){ schedDay = +b.dataset.sday; drawDay(); } };
+  if (keep) window.scrollTo(0, sy);
+  app.onclick = e => { const b = e.target.closest('[data-sday]'); if (b){ schedDay = +b.dataset.sday; drawDay(); if (b.classList.contains('sch-hwitem')) window.scrollTo({top:0, behavior:'smooth'}); } };
   let sx = 0; const box = $('#schday');
   box.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, {passive:true});
   box.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 70){ schedDay = Math.max(0, Math.min(5, schedDay + (dx < 0 ? 1 : -1))); drawDay(); } }, {passive:true});
@@ -390,7 +436,7 @@ function viewHome(){
       <h1>Зубрёжка</h1><p>Зубы у нас крепкие — гранит науки выдержат. Конспекты простыми словами, карточки и тесты.</p></div>
     <button class="joke" data-act="joke" aria-label="Другая шутка"><span class="jk-ic">😄</span><span class="jk-t">${esc(nextHomeJoke())}</span><span class="jk-dice">🎲</span></button>
     <button class="quick-btn" data-go="otvet"><span class="qi">⚡</span><div><b>Быстрый ответ</b><span>Для устного опроса: вбил вопрос — получил ответ</span></div><span class="chev">${I.chev}</span></button>
-    ${typeof SCHEDULE !== 'undefined' ? `<button class="sched-btn" data-go="raspisanie"><span class="sb-ic">📅</span><span class="sb-txt"><b>Расписание</b><span>${schedBtnText()}</span></span>${I.chev}</button>` : ''}
+    ${typeof SCHEDULE !== 'undefined' ? `<button class="sched-btn" data-go="raspisanie"><span class="sb-ic">📅</span><span class="sb-txt"><b>Расписание</b><span>${schedBtnText()}</span></span>${hwBadge()}${I.chev}</button>` : ''}
     <div class="search">${I.search}<input id="q" type="search" placeholder="Поиск по конспектам: «мейоз», «кодон»…" autocomplete="off"></div>
     <div id="results"></div>
     <div id="homeBody">
@@ -866,4 +912,6 @@ if (!window.claude && 'serviceWorker' in navigator && location.protocol==='https
 }
 route();
 setTimeout(loadFT, 2500);
+if (typeof SCHEDULE !== 'undefined') loadHW();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && typeof SCHEDULE !== 'undefined') loadHW(); });
 })();

@@ -1,0 +1,21 @@
+# Бот домашки: каждые 5 минут забирает сообщения из Telegram и обновляет homework.json
+name: ДЗ из Telegram
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: homework-bot
+  cancel-in-progress: false
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Забрать ДЗ из чата
+        run: python3 bot/homework_bot.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
