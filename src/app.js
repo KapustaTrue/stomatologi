@@ -86,6 +86,7 @@ function blockHTML(b){
     case 'ol': return `<ol>${a.map(x=>`<li>${x}</li>`).join('')}</ol>`;
     case 'table': return `<div class="tbl"><table><thead><tr>${a.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${c.map(r=>`<tr>${r.map(d=>`<td>${d}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     case 'svg': return `<figure>${SVGS[a]||''}<figcaption>${c||''}</figcaption></figure>`;
+    case 'img': return `<figure class="pic"><img src="${a}" loading="lazy" alt="${esc(c||'')}"><figcaption>${c||''}</figcaption></figure>`;
   }
   return '';
 }
@@ -93,7 +94,7 @@ function blockText(b){
   const [t,a,c] = b;
   if (t==='ul'||t==='ol') return a.map(strip).join(' ');
   if (t==='table') return a.join(' ') + ' ' + c.map(r=>r.join(' ')).join(' ');
-  if (t==='svg') return c||'';
+  if (t==='svg' || t==='img') return c||'';
   return strip(a);
 }
 function setAccent(s){
@@ -541,8 +542,10 @@ function examEntry(s){
     ${st.known?`<div class="ee-prog"><i style="width:${Math.round(st.known/st.all*100)}%"></i></div><small>знаю ${st.known} из ${st.all}</small>`:''}</div><span class="chev">${I.chev}</span></button>`;
 }
 function examBody(it, mode){
-  if (mode==='short') return `<ul class="ex-short">${it.short.map(x=>`<li>${x}</li>`).join('')}</ul>`;
-  return `<div class="ex-full">${it.full.map(blockHTML).join('')}</div>`;
+  const pics = it.pics || [];
+  if (mode==='short') return `<ul class="ex-short">${it.short.map(x=>`<li>${x}</li>`).join('')}</ul>${pics.length?`<div class="ex-pics">${blockHTML(pics[0])}</div>`:''}`;
+  const f = it.full.slice(); f.splice(Math.min(1, f.length), 0, ...pics);
+  return `<div class="ex-full">${f.map(blockHTML).join('')}</div>`;
 }
 function examText(it){ return strip(it.q + ' ' + it.short.join(' ') + ' ' + it.full.map(blockText).join(' ')).toLowerCase().replace(/ё/g,'е'); }
 function examItemHTML(sid, it, kind){
@@ -600,14 +603,14 @@ function renderExamList(s){
 function examFind(sid, key){ const E = EXAM[sid]; return (key[0]==='t' ? E.theory : E.practice).find(it => it.n === +key.slice(1)); }
 function printableExam(sid, mode){
   const E = EXAM[sid], s = SUBJ[sid];
-  const part = (arr, kind, title) => `<h1 class="part">${title}</h1>` + arr.map(it => `<div class="q"><h2>${kind==='theory'?it.n:'П'+it.n}. ${esc(it.q)}</h2>${mode==='short' ? `<ul>${it.short.map(x=>`<li>${x}</li>`).join('')}</ul>` : it.full.map(b=>blockHTML(b).replace('class="tbl"','')).join('')}</div>`).join('');
+  const part = (arr, kind, title) => `<h1 class="part">${title}</h1>` + arr.map(it => `<div class="q"><h2>${kind==='theory'?it.n:'П'+it.n}. ${esc(it.q)}</h2>${mode==='short' ? `<ul>${it.short.map(x=>`<li>${x}</li>`).join('')}</ul>${(it.pics||[]).slice(0,1).map(blockHTML).join('')}` : (()=>{ const f = it.full.slice(); f.splice(Math.min(1,f.length),0,...(it.pics||[])); return f.map(b=>blockHTML(b).replace('class="tbl"','')).join(''); })()}</div>`).join('');
   return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>${esc(E.title)}${mode==='short'?' — кратко':''}</title><style>
 @page{size:A4;margin:15mm 14mm}
 body{font-family:"Golos Text",Inter,"Segoe UI",Roboto,Arial,sans-serif;color:#1d2030;line-height:1.45;font-size:10.8pt;max-width:780px;margin:0 auto;padding:16px}
 .cover{border-radius:14px;padding:18px 20px;color:#fff;background:linear-gradient(135deg,${s.color},${s.ink});-webkit-print-color-adjust:exact;print-color-adjust:exact;margin-bottom:10px}
 .cover h1{margin:0 0 6px;font-size:21pt} .cover p{margin:0;opacity:.92}
 h1.part{font-size:16pt;color:${s.ink};margin:22px 0 6px;break-after:avoid;border-bottom:2px solid ${s.soft};padding-bottom:4px}
-.q{margin:12px 0 14px;${mode==='short'?'break-inside:avoid;':''}}
+.q{margin:12px 0 14px}
 .q h2{font-size:12pt;margin:0 0 6px;color:${s.ink};break-after:avoid}
 .q ul,.q ol{margin:4px 0 6px;padding-left:20px} .q li{margin:2px 0}
 h3{font-size:11pt;margin:8px 0 4px}
@@ -618,7 +621,7 @@ h3{font-size:11pt;margin:8px 0 4px}
 table{border-collapse:collapse;width:100%;font-size:9.5pt;margin:6px 0;break-inside:avoid}
 th{background:${s.soft};color:${s.ink};text-align:left;padding:5px 7px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 td{padding:5px 7px;border-bottom:1px solid #e6e4ef;vertical-align:top}
-figure{text-align:center;margin:8px 0;break-inside:avoid} figure svg{max-width:100%;height:auto}
+figure{text-align:center;margin:8px 0;break-inside:avoid} figure svg{max-width:100%;max-height:90mm;height:auto} figure.pic img{max-width:90%;max-height:110mm;border-radius:8px;border:1px solid #e6e4ef} figcaption:empty{display:none}
 </style></head><body>
 <div class="cover"><h1>📝 ${esc(E.title)}</h1><p>${esc(s.name)} · ${esc(s.teacher||'')}</p><p>${E.theory.length} вопросов по теории + ${E.practice.length} практических заданий · ${mode==='short'?'краткие ответы':'полные ответы'}</p></div>
 ${part(E.theory,'theory','Теория')}${part(E.practice,'practice','Практические задания')}
@@ -856,7 +859,7 @@ h2{font-size:15pt;margin:22px 0 8px;color:${s.ink};break-after:avoid}
 table{border-collapse:collapse;width:100%;font-size:10pt;margin:8px 0;break-inside:avoid}
 th{background:${s.soft};color:${s.ink};text-align:left;padding:6px 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 td{padding:6px 8px;border-bottom:1px solid #e6e4ef;vertical-align:top}
-figure{text-align:center;margin:10px 0;break-inside:avoid} figcaption{font-size:9pt;color:#6a6f82}
+figure{text-align:center;margin:10px 0;break-inside:avoid} figcaption{font-size:9pt;color:#6a6f82} figure svg{max-width:100%;height:auto} figure.pic img{max-width:92%;max-height:118mm;border-radius:8px;border:1px solid #e6e4ef}
 .rem{background:#fff7d6;border-radius:10px;padding:10px 16px;margin-top:18px;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .cards{columns:2;column-gap:20px;font-size:10pt} .cards div{break-inside:avoid;margin:0 0 8px;padding:6px 8px;border:1px solid #e6e4ef;border-radius:6px}
 .bar{position:sticky;top:0;background:#fff;padding:10px 0 14px;display:flex;gap:10px;align-items:center}
@@ -873,13 +876,57 @@ ${(l.facts||[]).map(f=>blockHTML(['fact',f])).join('')}
 <h2>🃏 Вопросы для самопроверки</h2><div class="cards">${l.cards.map(c=>`<div><b>${c[0]}</b><br>${c[1]}</div>`).join('')}</div>
 </body></html>`;
 }
+
+function printableFull(l){
+  const s = l.subject, secs = l.sections.concat(l.more||[]);
+  const nShort = l.sections.length;
+  return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>${esc(s.short)} — ${esc(l.title)} (полная версия)</title><style>
+@page{size:A4;margin:14mm 14mm}
+body{font-family:"Golos Text",Inter,"Segoe UI",Roboto,Arial,sans-serif;color:#1d2030;line-height:1.5;font-size:10.8pt;max-width:780px;margin:0 auto}
+.cover{border-radius:16px;padding:22px 24px;color:#fff;background:linear-gradient(135deg,${s.color},${s.ink});-webkit-print-color-adjust:exact;print-color-adjust:exact;margin-bottom:14px}
+.cover .k{font-size:9.5pt;font-weight:700;opacity:.9;text-transform:uppercase;letter-spacing:.05em}
+.cover h1{margin:6px 0 6px;font-size:23pt;line-height:1.15} .cover p{margin:0;opacity:.92}
+.toc{border:1px solid #e6e4ef;border-radius:12px;padding:10px 16px;margin:0 0 10px;columns:2;column-gap:24px;font-size:10pt}
+.toc div{break-inside:avoid;margin:2px 0} .toc b{color:${s.ink}}
+.legend{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px;font-size:8.5pt}
+.legend span{padding:3px 8px;border-radius:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+h2{font-size:15pt;margin:22px 0 8px;color:${s.ink};break-after:avoid;display:flex;gap:10px;align-items:center}
+h2 .n{display:inline-grid;place-items:center;min-width:28px;height:28px;border-radius:9px;background:${s.color};color:#fff;font-size:12pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+h2.more .n{background:${s.ink}}
+.part{margin:26px 0 4px;padding:8px 14px;border-radius:10px;background:${s.soft};color:${s.ink};font-weight:800;font-size:12pt;-webkit-print-color-adjust:exact;print-color-adjust:exact;break-after:avoid}
+h3{font-size:11.5pt;margin:10px 0 4px;break-after:avoid}
+.box{border-radius:8px;padding:7px 12px;margin:8px 0;border-left:4px solid;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.box .tag{display:block;font-size:8pt;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.sut{background:#fdecef;border-color:#e0527a}.simple{background:#e7f6ea;border-color:#3f9e5c}.imp{background:#fff4d9;border-color:#e0a000}.fact{background:#eef3ff;border-color:#5b7fd6}
+.note{font-size:9.5pt;color:#6a6f82;margin:6px 0} p{margin:6px 0} ul,ol{padding-left:22px;margin:6px 0} li{margin:3px 0}
+table{border-collapse:collapse;width:100%;font-size:9.6pt;margin:8px 0;break-inside:avoid}
+th{background:${s.soft};color:${s.ink};text-align:left;padding:6px 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+td{padding:6px 8px;border-bottom:1px solid #e6e4ef;vertical-align:top}
+figure{text-align:center;margin:10px 0;break-inside:avoid} figure svg{max-width:100%;max-height:100mm;height:auto} figure.pic img{max-width:94%;max-height:120mm;border-radius:8px;border:1px solid #e6e4ef}
+figcaption{font-size:9pt;color:#6a6f82;margin-top:3px} figcaption:empty{display:none}
+.rem{background:#fff7d6;border-radius:12px;padding:10px 18px;margin-top:20px;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cards{columns:2;column-gap:18px;font-size:9.6pt} .cards div{break-inside:avoid;margin:0 0 7px;padding:6px 9px;border:1px solid #e6e4ef;border-radius:7px}
+.quiz{font-size:9.6pt} .quiz div{break-inside:avoid;margin:0 0 6px}
+.src{font-size:8.5pt;color:#9aa0ad;margin-top:16px}
+</style></head><body>
+<div class="cover"><div class="k">${esc(s.name)} · лекция ${l.num}${l.date?' · '+l.date:''} · полная версия</div><h1>${esc(l.title)}</h1><p>${esc(l.sub)}</p><p style="margin-top:6px">👤 ${esc(s.teacher||'')}</p></div>
+<div class="toc">${secs.map((x,i)=>`<div><b>${i+1}.</b> ${esc(x.title)}${i>=nShort?' <span style="color:#9aa0ad">· подробнее</span>':''}</div>`).join('')}</div>
+<div class="legend"><span style="background:#fdecef">Суть — главное одной фразой</span><span style="background:#e7f6ea">Простыми словами</span><span style="background:#fff4d9">Важно</span><span style="background:${s.soft}">Таблицы</span></div>
+${secs.map((x,i)=>`${i===nShort?`<div class="part">📖 Подробнее — дополнительные материалы к теме</div>`:''}<h2 class="${i>=nShort?'more':''}"><span class="n">${i+1}</span><span>${esc(x.title)}</span></h2>${x.blocks.map(b=>blockHTML(b).replace('class="tbl"','')).join('')}`).join('')}
+<div class="rem"><h2 style="margin-top:6px">📌 Что запомнить</h2><ul>${l.remember.map(r=>`<li>${r}</li>`).join('')}</ul></div>
+${(l.facts||[]).map(f=>blockHTML(['fact',f])).join('')}
+<h2>🃏 Вопросы для самопроверки</h2><div class="cards">${l.cards.map(c=>`<div><b>${c[0]}</b><br>${c[1]}</div>`).join('')}</div>
+<h2>✅ Тест с ответами</h2><div class="quiz">${l.quiz.map((q,i)=>`<div><b>${i+1}. ${q.q}</b><br>Ответ: ${q.o[q.a]} — <span style="color:#6a6f82">${q.why}</span></div>`).join('')}</div>
+<div class="src">Конспект составлен по лекции и дополнительным материалам преподавателя. Иллюстрации: схемы — собственные; иконки Healthicons (MIT); рисунки Servier Medical Art (CC BY 3.0), DBCLS (CC BY 4.0) и OpenClipart (CC0) из коллекции Bioicons; слайды — материалы к занятиям.</div>
+</body></html>`;
+}
 function plainText(l){
   let t = `${l.subject.name} · лекция ${l.num}\n${l.title}\n\n`;
   l.sections.forEach((s,i)=>{ t += `${i+1}. ${s.title}\n`; s.blocks.forEach(b=>{
     const pre = {sut:'Суть: ',simple:'Простыми словами: ',imp:'Важно: ',note:'',fact:'Интересно: '}[b[0]] ?? '';
     if (b[0]==='ul'||b[0]==='ol') b[1].forEach((x,k)=>t+=`${b[0]==='ol'?(k+1)+'.':'•'} ${strip(x)}\n`);
     else if (b[0]==='table') { t += b[1].join(' | ')+'\n'; b[2].forEach(r=>t+=r.join(' | ')+'\n'); }
-    else if (b[0]!=='svg') t += pre + strip(b[1]) + '\n';
+    else if (b[0]!=='svg' && b[0]!=='img') t += pre + strip(b[1]) + '\n';
   }); t += '\n'; });
   t += 'Что запомнить:\n' + l.remember.map(r=>'• '+strip(r)).join('\n');
   return t;
@@ -1038,6 +1085,7 @@ document.addEventListener('click', e => {
 });
 
 window.__printable = id => printableHTML(LEC[id]);
+window.__printableFull = id => printableFull(LEC[id]);
 window.__printableExam = (sid, mode) => printableExam(sid, mode||'full');
 window.__ask = (q,s) => answerSearch(q,s||'').map(r=>[r.sc.toFixed(2), r.it.l.id, r.it.kind, r.it.q]);
 if (!window.claude && 'serviceWorker' in navigator && location.protocol==='https:'){

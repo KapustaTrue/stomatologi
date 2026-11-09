@@ -759,3 +759,12 @@ nursing: {
   ],
 },
 };
+
+// картинки к ответам (показываются и в полном, и в кратком режиме)
+(() => {
+  const T = {1:['sd_risk','sd_factors'],2:['sd_waste'],3:['sd_chain','sd_break'],4:['sd_waste'],5:['sd_psosteps'],6:['sd_ppe'],7:['sd_dezkinds'],8:['sd_dezgroups','sd_props'],9:['sd_classes'],10:['sd_ppe','sd_label'],11:['sd_bak'],12:['sd_daytime'],13:['sd_genclean','sd_mops'],14:['sd_waste','@slide-waste-table.webp'],15:['sd_waste'],16:['sd_steps','sd_psosteps'],17:['sd_tests','@slide-probes.webp'],18:['sd_handwash','sd_ppe'],19:['sd_sterreg','sd_packs'],20:['sd_ppe'],21:['sd_packs'],22:['sd_waste'],23:['sd_sterreg'],24:['sd_hiv','sd_kit'],25:['sd_bbs','sd_transport'],26:['sd_cso'],27:['sd_daytime','sd_bak'],29:['sd_uv'],31:['sd_dezmethods','sd_daytime'],32:['sd_cso'],33:['sd_ppe'],34:['sd_apply','sd_dezgroups'],36:['sd_dezgroups','sd_props'],37:['sd_ppe','sd_needle'],38:['sd_label','sd_dilution'],39:['sd_factors','sd_ismp'],40:['sd_tests'],41:['sd_bbs'],42:['sd_ppe','sd_firstaid'],43:['sd_waste'],44:['sd_packs'],45:['sd_waste'],47:['sd_waste'],48:['sd_sterreg','sd_indicator'],50:['sd_break'],51:['sd_bbs'],52:['sd_classes'],53:['sd_resist'],54:['sd_ppe']};
+  const Pr = {1:['sd_handwash'],2:['sd_dilution','@slide-solutions.webp'],3:['sd_hiv'],4:['sd_firstaid'],5:['sd_label'],6:['sd_needle'],7:['sd_lice','sd_sanpass'],8:['sd_genclean'],10:['sd_psosteps'],11:['sd_tests'],12:['sd_bix'],13:['sd_indicator'],14:['sd_bix','sd_packs'],15:['sd_indicator'],17:['sd_gloves'],18:['sd_hiv','sd_kit'],19:['sd_firstaid'],20:['sd_hiv'],21:['sd_resist'],22:['sd_needle','sd_waste'],23:['sd_tests'],24:['sd_ppe'],25:['sd_apply'],26:['sd_bix'],27:['sd_bix'],28:['sd_hiv'],29:['sd_gloves']};
+  const conv = a => a.map(k => k[0] === '@' ? ['img', 'img/sd/' + k.slice(1), ''] : ['svg', k, '']);
+  EXAM.nursing.theory.forEach(it => { if (T[it.n]) it.pics = conv(T[it.n]); });
+  EXAM.nursing.practice.forEach(it => { if (Pr[it.n]) it.pics = conv(Pr[it.n]); });
+})();
