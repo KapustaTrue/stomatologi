@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f4fa">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Учёба · С-201</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Учёба С-201">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="Конспекты, карточки и тесты группы С-201">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap&subset=cyrillic" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f4fa; --card:#fff; --ink:#1d2030; --muted:#6a6f82; --line:#e6e4ef;
+  --acc:#7b61d6; --acc-soft:#f0ecff; --acc-ink:#46309a;
+  --sut:#fdecef; --sut-b:#e0527a; --simple:#e7f6ea; --simple-b:#3f9e5c; --imp:#fff4d9; --imp-b:#e0a000; --fact:#eef3ff; --fact-b:#5b7fd6;
+  --r:18px; --shadow:0 1px 2px rgba(20,20,50,.05),0 6px 20px rgba(20,20,50,.06);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.55}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+a{color:var(--acc-ink)}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px calc(40px + env(safe-area-inset-bottom))}
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:rgba(245,244,250,.88);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);padding-top:env(safe-area-inset-top);border-bottom:1px solid transparent}
+.top.scrolled{border-bottom-color:var(--line)}
+.top-in{max-width:760px;margin:0 auto;padding:10px 12px;display:flex;align-items:center;gap:8px;min-height:56px}
+.back{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);box-shadow:var(--shadow);flex:none}
+.back svg{width:20px;height:20px}
+.top-title{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.icon-btn{height:40px;padding:0 12px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;flex:none}
+.icon-btn svg{width:18px;height:18px}
+/* home */
+.hero{padding:18px 4px 6px}
+.hero small{color:var(--muted);font-weight:600;letter-spacing:.02em}
+.hero h1{font-size:30px;line-height:1.15;margin:4px 0 6px;font-weight:800;letter-spacing:-.02em}
+.hero p{margin:0;color:var(--muted)}
+.search{margin:16px 0 8px;position:relative}
+.search input{width:100%;height:50px;border-radius:16px;border:1px solid var(--line);background:var(--card);padding:0 16px 0 46px;font:inherit;font-size:16px;color:var(--ink);box-shadow:var(--shadow);outline:none}
+.search input:focus{border-color:var(--acc)}
+.search svg{position:absolute;left:15px;top:15px;width:20px;height:20px;color:var(--muted)}
+.section-label{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:22px 4px 10px}
+.continue{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);width:100%;text-align:left}
+.continue .em{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:22px;flex:none}
+.continue b{display:block;font-size:15px;line-height:1.3}
+.continue span{font-size:13px;color:var(--muted)}
+.subjects{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:420px){.subjects{grid-template-columns:1fr}}
+.subj{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);text-align:left;display:flex;flex-direction:column;gap:10px;min-height:150px;position:relative;overflow:hidden;transition:transform .15s}
+.subj:active{transform:scale(.98)}
+.subj .em{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:24px}
+.subj h3{margin:0;font-size:17px;line-height:1.25;font-weight:700}
+.subj .meta{margin-top:auto;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+.subj .bar{position:absolute;left:0;right:0;bottom:0;height:4px}
+.install{margin-top:22px;width:100%;display:flex;gap:12px;align-items:center;padding:14px;border-radius:var(--r);background:linear-gradient(135deg,#ece8ff,#e3efff);text-align:left}
+.install .em{font-size:24px}
+.install b{display:block;font-size:15px}
+.install span{font-size:13px;color:var(--muted)}
+/* subject page */
+.subj-head{border-radius:24px;padding:20px;margin:6px 0 16px;color:#fff;position:relative;overflow:hidden}
+.subj-head .em{font-size:38px;line-height:1}
+.subj-head h1{margin:10px 0 4px;font-size:24px;line-height:1.2;font-weight:800}
+.subj-head p{margin:0;opacity:.9;font-size:14px}
+.lec{display:flex;gap:14px;align-items:center;background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);width:100%;text-align:left;margin-bottom:10px}
+.lec .n{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-weight:800;font-size:17px;flex:none}
+.lec b{display:block;font-size:16px;line-height:1.3}
+.lec span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.lec .prog{font-size:12px;font-weight:600;margin-top:6px;display:flex;gap:10px}
+.lec.soon{opacity:.55;box-shadow:none;border:1px dashed var(--line);background:transparent;cursor:default}
+.chev{margin-left:auto;color:#b6b9c8;flex:none}
+/* lecture */
+.lec-head{padding:6px 4px 4px}
+.lec-head .kicker{font-size:13px;font-weight:700;color:var(--acc)}
+.lec-head h1{margin:4px 0 6px;font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-.01em}
+.lec-head p{margin:0;color:var(--muted);font-size:14px}
+.tabs{position:sticky;top:calc(56px + env(safe-area-inset-top));z-index:15;display:flex;gap:6px;padding:10px 0;background:var(--bg)}
+.tab{flex:1;height:42px;border-radius:13px;font-weight:600;font-size:14px;background:var(--card);box-shadow:var(--shadow);color:var(--muted)}
+.tab.on{background:var(--acc);color:#fff}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 6px}
+.chip{height:38px;padding:0 14px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
+.chip svg{width:17px;height:17px}
+.toc{background:var(--card);border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow);margin:12px 0}
+.toc summary{font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between}
+.toc summary::-webkit-details-marker{display:none}
+.toc ol{margin:10px 0 2px;padding-left:22px}
+.toc li{margin:4px 0}
+.toc a{color:var(--ink);text-decoration:none}
+.sec{background:var(--card);border-radius:var(--r);padding:18px 16px;box-shadow:var(--shadow);margin:12px 0;scroll-margin-top:130px}
+.sec h2{margin:0 0 12px;font-size:20px;line-height:1.25;display:flex;gap:10px;align-items:baseline}
+.sec h2 .num{color:var(--acc);font-weight:800}
+.sec p{margin:10px 0}
+.sec ul,.sec ol{padding-left:22px;margin:10px 0}
+.sec li{margin:6px 0}
+.box{border-radius:14px;padding:12px 14px;margin:12px 0;border-left:4px solid}
+.box .tag{display:block;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.box.sut{background:var(--sut);border-color:var(--sut-b)} .box.sut .tag{color:#b2244f}
+.box.simple{background:var(--simple);border-color:var(--simple-b)} .box.simple .tag{color:#22663a}
+.box.imp{background:var(--imp);border-color:var(--imp-b)} .box.imp .tag{color:#8a6200}
+.box.fact{background:var(--fact);border-color:var(--fact-b)} .box.fact .tag{color:#2c4fa3}
+.note{font-size:13px;color:var(--muted);background:#f6f6f9;border-radius:10px;padding:8px 12px;margin:10px 0}
+.tbl{overflow-x:auto;margin:12px -4px;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:14.5px;line-height:1.4}
+th{background:var(--acc-soft);color:var(--acc-ink);text-align:left;font-weight:700;padding:9px 10px}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere;hyphens:auto}
+th:first-child{border-radius:10px 0 0 0} th:last-child{border-radius:0 10px 0 0}
+figure{margin:14px 0;text-align:center}
+figure svg{max-width:100%;height:auto}
+figcaption{font-size:13px;color:var(--muted);margin-top:6px}
+.remember{background:linear-gradient(160deg,#fff7d6,#fff1c2);border-radius:var(--r);padding:18px 16px;margin:16px 0}
+.remember h2{margin:0 0 8px;font-size:20px}
+.remember li{margin:8px 0}
+.facts .box{margin:10px 0}
+.outlink{display:flex;gap:12px;align-items:center;background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin:12px 0;text-decoration:none;color:var(--ink)}
+.outlink b{display:block}
+.outlink span{font-size:13px;color:var(--muted)}
+/* flashcards */
+.fc-wrap{margin:10px 0}
+.fc{position:relative;height:280px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.face{position:absolute;inset:0;border-radius:22px;padding:24px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;box-shadow:var(--shadow);transition:opacity .25s,transform .25s}
+.face.ffront{background:var(--card)}
+.face.fback{background:var(--acc);color:#fff;opacity:0;transform:scale(.96);pointer-events:none}
+.fc.flip .face.ffront{opacity:0;transform:scale(.96)}
+.fc.flip .face.fback{opacity:1;transform:none}
+.face .lbl{position:absolute;top:16px;left:18px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.6}
+.face .txt{font-size:21px;font-weight:700;line-height:1.35}
+.face.fback .txt{font-size:19px;font-weight:600}
+.face .hint{position:absolute;bottom:14px;font-size:12px;opacity:.55}
+.fc-ctrl{display:flex;gap:10px;margin-top:12px}
+.fc-ctrl button{flex:1;height:52px;border-radius:15px;font-weight:700;font-size:15px}
+.btn-no{background:#ffe6e6;color:#a82424}
+.btn-yes{background:#dff4e4;color:#1f6a37}
+.fc-top{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--muted);font-weight:600;margin-top:8px}
+.pbar{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px 0}
+.pbar i{display:block;height:100%;background:var(--acc);border-radius:6px;transition:width .3s}
+.link-btn{color:var(--acc-ink);font-weight:600;font-size:14px;padding:6px 0}
+.done{text-align:center;background:var(--card);border-radius:22px;padding:28px 20px;box-shadow:var(--shadow);margin:12px 0}
+.done .big{font-size:44px}
+.done h3{margin:8px 0 4px;font-size:21px}
+.done p{color:var(--muted);margin:0 0 16px}
+.primary{height:50px;padding:0 22px;border-radius:15px;background:var(--acc);color:#fff;font-weight:700;font-size:15px}
+.secondary{height:50px;padding:0 22px;border-radius:15px;background:var(--acc-soft);color:var(--acc-ink);font-weight:700;font-size:15px}
+/* quiz */
+.q-card{background:var(--card);border-radius:22px;padding:20px 16px;box-shadow:var(--shadow);margin:10px 0}
+.q-card h3{margin:4px 0 14px;font-size:19px;line-height:1.35}
+.opt{display:block;width:100%;text-align:left;padding:14px 16px;border-radius:14px;border:2px solid var(--line);margin:8px 0;font-size:15.5px;font-weight:500;background:#fff;transition:background .15s,border-color .15s}
+.opt.right{border-color:#3f9e5c;background:#e7f6ea}
+.opt.wrong{border-color:#d64545;background:#fdeaea}
+.opt:disabled{cursor:default}
+.why{border-radius:14px;padding:12px 14px;margin-top:12px;font-size:15px}
+.why.ok{background:#e7f6ea} .why.bad{background:#fdeaea}
+/* search results */
+.res{display:block;width:100%;text-align:left;background:var(--card);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow);margin-bottom:8px}
+.res small{font-size:12px;font-weight:700}
+.res b{display:block;font-size:15px;margin:2px 0}
+.res span{font-size:13.5px;color:var(--muted);display:block}
+mark{background:#ffe58a;color:inherit;border-radius:3px;padding:0 1px}
+.empty{color:var(--muted);text-align:center;padding:30px 10px}
+/* sheet / modal */
+.scrim{position:fixed;inset:0;background:rgba(20,20,40,.35);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fade .2s}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:24px 24px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto;animation:up .25s cubic-bezier(.3,.7,.3,1)}
+@media(min-width:600px){.scrim{align-items:center}.sheet{border-radius:24px}}
+.sheet h3{margin:0 0 6px;font-size:20px}
+.sheet .grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:-6px auto 14px}
+.sheet .os{background:var(--bg);border-radius:16px;padding:14px;margin:12px 0}
+.sheet .os b{display:block;margin-bottom:6px}
+.sheet ol{margin:0;padding-left:20px}
+.sheet li{margin:5px 0}
+@keyframes fade{from{opacity:0}} @keyframes up{from{transform:translateY(30px);opacity:0}}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1d2030;color:#fff;padding:11px 18px;border-radius:14px;font-size:14px;font-weight:600;z-index:60;max-width:90vw;text-align:center;animation:up .2s}
+.foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px}
+</style>
+</head>
+<body>
+<header class="top" id="top"><div class="top-in" id="topIn"></div></header>
+<main class="wrap" id="app"></main>
+<script>
+// ===== МЕДИЦИНСКАЯ ГЕНЕТИКА =====
+// Блоки: ['h',заголовок] ['sut',текст] ['p',html] ['ul',[...]] ['ol',[...]] ['simple',текст] ['imp',текст] ['fact',текст] ['table',[шапка],[[строки]]] ['svg',ключ,подпись] ['note',текст]
+
+const GEN = {
+  id: 'genetics', name: 'Медицинская генетика', short: 'Медгенетика',
+  color: '#7b61d6', soft: '#f0ecff', ink: '#46309a', emoji: '🧬',
+  lectures: [
+  {
+    id: 'gen-1', num: 1, title: 'Цитологические основы наследственности',
+    sub: 'Клетка, хромосомы, кариотип, митоз, мейоз, гаметогенез',
+    date: '3 ноября',
+    sections: [
+      { title: 'Большая картина', blocks: [
+        ['sut', 'Наследственная информация записана в ДНК, ДНК смотана в хромосомы, хромосомы лежат в ядре каждой клетки.'],
+        ['simple', 'Человек состоит из клеток, как дом из кирпичей. В каждой клетке есть ядро — «сейф». В сейфе лежат 46 хромосом — туго смотанные нити ДНК. ДНК — длинный текст из четырёх «букв» (нуклеотидов). Отрезок текста с одной инструкцией (как сделать один белок) — это ген.'],
+        ['table', ['Структура клетки', 'Что это'], [
+          ['Ядерная оболочка', 'двойная мембрана с порами, переходит в ЭПР'],
+          ['Ядрышко', 'немембранная структура, где собираются рибосомы'],
+          ['Хроматин', 'ДНК + белки; в делящейся клетке виден как отдельные хромосомы'],
+          ['Клеточный центр', 'пара центриолей, от него отходят нити веретена деления'],
+        ]],
+      ]},
+      { title: 'Хроматин и хромосомы', blocks: [
+        ['sut', 'Между делениями ДНК размотана (хроматин) и работает, а перед делением сматывается в компактные хромосомы.'],
+        ['ul', [
+          '<b>Хроматин</b> — в интерфазном ядре ДНК деспирализована и вместе с белками-гистонами образует хроматин. В нём ДНК доступна для транскрипции и репликации.',
+          '<b>Спирализация</b> — при подготовке к делению (профаза митоза) хроматин плотно скручивается и конденсируется.',
+          '<b>Результат</b> — компактные, интенсивно окрашивающиеся хромосомы, видимые в световой микроскоп.',
+        ]],
+        ['simple', 'В одной клетке около 2 метров ДНК, и всё это лежит в ядре размером в несколько микрометров. Пока клетка живёт и работает, нить размотана — так удобно «читать» гены. Перед делением размотанную пряжу не поделишь, поэтому клетка сматывает её в плотные мотки — хромосомы.'],
+      ]},
+      { title: 'Строение метафазной хромосомы', blocks: [
+        ['sut', 'Метафазная хромосома — две одинаковые копии (хроматиды), скреплённые центромерой.'],
+        ['svg', 'chromosome', 'Строение метафазной хромосомы'],
+        ['ol', [
+          '<b>Две хроматиды</b> — точные копии друг друга, появились при репликации ДНК.',
+          '<b>Центромера (первичная перетяжка)</b> — соединяет сестринские хроматиды; к ней крепятся нити веретена деления.',
+          '<b>Плечи</b> — короткое (p) и длинное (q).',
+          '<b>Теломеры</b> — концевые участки, защищают от слипания и разрушения.',
+          '<b>Вторичная перетяжка и спутник</b> — у некоторых хромосом; вторичная перетяжка содержит гены рРНК и называется <b>ядрышковым организатором</b>.',
+        ]],
+        ['p', '<b>Типы хромосом</b> по положению центромеры: <b>метацентрические</b> (посередине), <b>субметацентрические</b> (чуть смещена), <b>акроцентрические</b> (почти на конце). Телоцентрические (на самом конце) у человека в норме не встречаются.'],
+        ['simple', 'Хромосома похожа на букву X: две одинаковые копии на одной «скрепке» — центромере. За неё клетка растащит копии в разные стороны. Концы защищены теломерами, как шнурки пластиковыми наконечниками. «Акрон» — вершина (как в «акрополь»), «телос» — конец.'],
+      ]},
+      { title: 'Кариотип человека', blocks: [
+        ['sut', '46 хромосом = 23 пары: 22 пары аутосом и пара половых (XX или XY); в половых клетках — 23.'],
+        ['p', '<b>Кариотип</b> — совокупность количественных и качественных признаков хромосомного набора, характерного для вида. Формулы: <b>46,XX</b> — женщина, <b>46,XY</b> — мужчина.'],
+        ['ul', [
+          '<b>Диплоидный набор 2n = 46</b> — в соматических клетках (23 от матери + 23 от отца). Хромосомы одной пары — <b>гомологичные</b>.',
+          '<b>Гаплоидный набор n = 23</b> — в зрелых гаметах; уменьшение вдвое происходит в мейозе.',
+          '<b>Аутосомы</b> — пары 1–22, одинаковые у мужчин и женщин.',
+          '<b>Гоносомы</b> — 23-я пара: у женщин две X (крупные субметацентрические), у мужчин X и мелкая акроцентрическая Y.',
+        ]],
+        ['table', ['Группа', 'Пары', 'Размер и тип'], [
+          ['A', '1–3', 'крупные, мета- и субметацентрические'],
+          ['B', '4–5', 'крупные субметацентрические'],
+          ['C', '6–12 и X', 'средние субметацентрические'],
+          ['D', '13–15', 'средние акроцентрические'],
+          ['E', '16–18', 'мелкие мета- и субметацентрические'],
+          ['F', '19–20', 'мелкие метацентрические'],
+          ['G', '21–22 и Y', 'мелкие акроцентрические'],
+        ]],
+        ['note', 'Расшифровка групп A–G по Денверской классификации — дополнение к лекции.'],
+        ['simple', 'Кариотип — «паспорт» хромосомного набора. Представь энциклопедию из 23 томов: в обычной клетке два комплекта — от мамы и от папы, итого 46 книг. Тома с одинаковым номером — гомологичные хромосомы. В половой клетке один комплект, чтобы при оплодотворении снова получилось 46.'],
+      ]},
+      { title: 'Клеточный цикл', blocks: [
+        ['sut', 'Клетка живёт по кругу: растёт (G1) → копирует ДНК (S) → готовится (G2) → делится (M).'],
+        ['p', '<b>n</b> — число хромосом, <b>c</b> — число молекул ДНК. Интерфаза занимает до 90% времени цикла.'],
+        ['ol', [
+          '<b>G1, пресинтетический (2n2c)</b> — рост клетки, синтез РНК, белков, ферментов; хромосомы однохроматидные.',
+          '<b>S, синтетический (2n2c → 2n4c)</b> — репликация ДНК, хромосомы становятся двухроматидными.',
+          '<b>G2, постсинтетический (2n4c)</b> — синтез белков веретена деления, запас энергии (АТФ); клеточный центр удвоен.',
+        ]],
+        ['simple', 'Это подготовка к переезду в два новых дома. G1 — клетка просто живёт. S — делает ксерокопию всей ДНК. G2 — проверяет, всё ли готово, и запасает энергию. Митоз — сам переезд.'],
+      ]},
+      { title: 'Митоз', blocks: [
+        ['sut', 'Митоз делит клетку на две точные копии: было 46 хромосом — в каждой дочерней тоже 46.'],
+        ['ol', [
+          '<b>Профаза (2n4c)</b> — хромосомы спирализуются и становятся видны, центриоли расходятся к полюсам, ядерная оболочка и ядрышки растворяются.',
+          '<b>Метафаза (2n4c)</b> — хромосомы на экваторе (метафазная пластинка), нити веретена крепятся к центромерам.',
+          '<b>Анафаза (4n4c)</b> — центромеры делятся, сестринские хроматиды расходятся к полюсам. Самая короткая фаза.',
+          '<b>Телофаза (2n2c)</b> — деспирализация, восстановление ядер, деление цитоплазмы (цитокинез).',
+        ]],
+        ['p', '<b>Генетическое значение:</b> точное распределение генетического материала; постоянство клеточных поколений; основа роста, развития и регенерации.'],
+        ['simple', 'Копии хромосом держатся парами, как носки на прищепке. В метафазе пары выстраиваются в ряд посередине, в анафазе прищепки снимают, и один носок уезжает налево, другой направо. Так растёт организм и заживают раны.'],
+      ]},
+      { title: 'Мейоз', blocks: [
+        ['sut', 'Мейоз делает половые клетки: из одной клетки с 46 хромосомами — четыре разные клетки по 23.'],
+        ['p', '<b>Мейоз</b> — редукционное деление при созревании половых клеток: два деления подряд, между ними репликации нет.'],
+        ['ul', [
+          '<b>Профаза I (2n4c)</b> — <b>конъюгация</b> (сближение гомологов, биваленты) и <b>кроссинговер</b> (обмен участками несестринских хроматид, место перекрёста — хиазма).',
+          '<b>Метафаза I</b> — на экваторе пары гомологов.',
+          '<b>Анафаза I</b> — к полюсам расходятся <b>целые гомологичные хромосомы</b>.',
+          '<b>После мейоза I</b> — клетки 1n2c.',
+          '<b>Мейоз II</b> — как митоз: расходятся сестринские хроматиды. Итог — 4 клетки 1n1c, все генетически разные.',
+        ]],
+        ['table', ['', 'Митоз', 'Мейоз'], [
+          ['Где', 'соматические клетки', 'созревающие половые клетки'],
+          ['Делений', '1', '2 подряд'],
+          ['Клеток на выходе', '2', '4'],
+          ['Набор', '2n, как у материнской', 'n, вдвое меньше'],
+          ['Дочерние клетки', 'идентичны', 'все разные'],
+          ['Кроссинговер', 'нет', 'есть, в профазе I'],
+        ]],
+        ['simple', 'Без мейоза при каждом оплодотворении хромосом становилось бы вдвое больше: 46 → 92 → 184. А ещё мейоз тасует колоду: кроссинговер и случайное расхождение пар. Поэтому братья и сёстры не копии друг друга.'],
+      ]},
+      { title: 'Гаметогенез', blocks: [
+        ['sut', 'У мужчин из одной клетки — 4 сперматозоида, и так всю жизнь; у женщин — 1 яйцеклетка из запаса, созданного ещё до рождения.'],
+        ['ol', [
+          '<b>Зона размножения (2n2c)</b> — гонии делятся митозом.',
+          '<b>Зона роста (2n4c)</b> — сперматоциты/овоциты I порядка, репликация ДНК.',
+          '<b>Зона созревания</b> — мейоз: клетки II порядка (1n2c), затем гаметы (1n1c).',
+          '<b>Зона формирования</b> — только у мужчин: жгутик, акросома.',
+        ]],
+        ['p', 'Сперматогенез идёт непрерывно с полового созревания, цикл 70–74 дня. Овогенез: размножение только внутриутробно, овоциты I порядка «замирают» в профазе I; мейоз II завершается только при оплодотворении. Итог — 1 яйцеклетка и 3 полярных тельца.'],
+        ['imp', 'Овоциты хранятся от рождения до овуляции и всё это время уязвимы для токсинов, радиации, никотина и вирусов. С возрастом матери растёт риск нерасхождения хромосом — например, трисомии 21 (синдром Дауна).'],
+      ]},
+    ],
+    remember: [
+      'Хроматин — рабочая (размотанная) ДНК; хромосома — смотанная, перед делением.',
+      'Части хромосомы: 2 хроматиды, центромера, плечи p и q, теломеры, спутник.',
+      'Кариотип: 46,XX и 46,XY; 2n = 46, n = 23; 22 пары аутосом + гоносомы.',
+      'G1 2n2c → S 2n4c → G2 2n4c; анафаза митоза 4n4c.',
+      'Митоз: 1 деление → 2 одинаковые клетки 2n. Мейоз: 2 деления → 4 разные клетки n.',
+      'Кроссинговер — в профазе I мейоза, источник комбинативной изменчивости.',
+      'Сперматогенез: 4 гаметы; овогенез: 1 яйцеклетка + 3 полярных тельца.',
+    ],
+    facts: [
+      'Если вытянуть всю ДНК одной клетки в нить, получится около 2 метров. А ядро, где она лежит, в сотни тысяч раз меньше.',
+      'Девочка рождается с запасом в 1–2 миллиона овоцитов, а до овуляции за всю жизнь доходит только около 400 из них.',
+    ],
+    cards: [
+      ['Что такое хроматин?', 'ДНК + белки-гистоны в интерфазном ядре; рабочая, размотанная форма ДНК'],
+      ['Что такое центромера?', 'Первичная перетяжка: соединяет сестринские хроматиды, к ней крепятся нити веретена'],
+      ['Зачем нужны теломеры?', 'Защищают концы хромосом от слипания и разрушения'],
+      ['Что такое ядрышковый организатор?', 'Вторичная перетяжка с генами рРНК'],
+      ['Кариотип мужчины и женщины', '46,XY и 46,XX'],
+      ['Что такое гомологичные хромосомы?', 'Хромосомы одной пары: одна от матери, другая от отца; одинаковые по форме и набору генов'],
+      ['Набор n и c в периоде G2', '2n4c'],
+      ['Набор в анафазе митоза', '4n4c'],
+      ['Что происходит в S-периоде?', 'Репликация ДНК: 2n2c → 2n4c'],
+      ['Что такое кроссинговер?', 'Обмен участками несестринских хроматид гомологичных хромосом в профазе I мейоза'],
+      ['Что расходится в анафазе I мейоза?', 'Целые гомологичные хромосомы'],
+      ['Набор после мейоза I и мейоза II', '1n2c и 1n1c'],
+      ['Какая зона есть только в сперматогенезе?', 'Зона формирования'],
+      ['Группа G кариограммы', 'Пары 21–22 и Y: мелкие акроцентрические'],
+    ],
+    quiz: [
+      { q: 'Сколько хромосом в сперматозоиде человека?', o: ['46', '23', '92', '22'], a: 1, why: 'Гаметы гаплоидны: n = 23.' },
+      { q: 'В какой фазе митоза хромосомы выстраиваются по экватору?', o: ['Профаза', 'Анафаза', 'Метафаза', 'Телофаза'], a: 2, why: 'Метафаза: образуется метафазная пластинка, удобно изучать хромосомы.' },
+      { q: 'Какой набор у клетки в периоде G2?', o: ['2n2c', '2n4c', '1n2c', '4n4c'], a: 1, why: 'После S-периода ДНК удвоена, а число хромосом прежнее.' },
+      { q: 'Где происходит кроссинговер?', o: ['В анафазе митоза', 'В профазе I мейоза', 'В S-периоде', 'В телофазе II'], a: 1, why: 'Во время конъюгации гомологов в профазе I.' },
+      { q: 'Хромосома с центромерой почти на конце называется…', o: ['метацентрической', 'субметацентрической', 'акроцентрической', 'телоцентрической'], a: 2, why: '«Акрон» — вершина. Телоцентрические у человека в норме не встречаются.' },
+      { q: 'Сколько полноценных яйцеклеток получается из одного овоцита I порядка?', o: ['1', '2', '4', '8'], a: 0, why: 'Одна яйцеклетка и три полярных тельца.' },
+    ],
+  },
+  {
+    id: 'gen-2', num: 2, title: 'Биохимические основы наследственности',
+    sub: 'Нуклеотиды, ДНК, РНК, репликация и репарация',
+    date: '4 ноября',
+    sections: [
+      { title: 'Нуклеотид — «буква» наследственности', blocks: [
+        ['sut', 'ДНК и РНК — длинные цепочки из нуклеотидов, а информация записана в порядке их «букв».'],
+        ['p', '<b>Нуклеиновые кислоты</b> — высокомолекулярные полимеры, мономеры которых — <b>нуклеотиды</b>. Нуклеотид состоит из трёх частей:'],
+        ['ol', [
+          '<b>Азотистое основание</b> — пуриновое или пиримидиновое.',
+          '<b>Пентоза</b> — сахар с 5 атомами углерода.',
+          '<b>Остаток фосфорной кислоты</b>.',
+        ]],
+        ['p', 'Фосфат одного нуклеотида соединяется с сахаром следующего — получается <b>сахарофосфатный остов</b>. У цепи есть направление: от <b>5′-конца</b> к <b>3′-концу</b>.'],
+        ['simple', 'Нуклеотид — бусина-буква. Общая часть (сахар и фосфат) нанизывается на нитку, а «буква» — основание. Букв всего четыре, как из 33 букв алфавита складывается любая книга. «Кот» и «ток» — одни буквы, разный смысл; с генами так же.'],
+      ]},
+      { title: 'ДНК', blocks: [
+        ['sut', 'ДНК — две цепи, закрученные в спираль; «буквы» сцеплены строго парами А–Т и Г–Ц.'],
+        ['ul', [
+          'Сахар — <b>дезоксирибоза</b>. Основания: пуриновые А, Г; пиримидиновые Т, Ц.',
+          '<b>Модель Уотсона–Крика (1953)</b>: правозакрученная двойная спираль, цепи <b>антипараллельны</b>.',
+          'Виток — 3,4 нм, между парами 0,34 нм, около 10 пар на виток.',
+          'Внутри цепи — прочные ковалентные связи, между цепями — водородные.',
+        ]],
+        ['svg', 'dna', 'Комплементарность: А=Т (2 связи), Г≡Ц (3 связи)'],
+        ['p', '<b>Комплементарность (правило Чаргаффа):</b> А=Т — 2 водородные связи, Г≡Ц — 3. По одной цепи можно восстановить вторую. <b>А + Г = Т + Ц</b>.'],
+        ['simple', 'ДНК — застёжка-молния. А цепляется только за Т, Г — только за Ц, как ключ к своему замку. Поэтому по одной половинке всегда можно восстановить вторую.'],
+      ]},
+      { title: 'РНК и её виды', blocks: [
+        ['sut', 'ДНК хранит информацию, а РНК её использует: переносит копии генов и помогает собрать белок.'],
+        ['ul', ['Сахар — <b>рибоза</b>, вместо тимина — <b>урацил (У)</b>.', 'Одна цепь, намного короче ДНК.']],
+        ['table', ['Вид', 'Доля', 'Функция'], [
+          ['иРНК', '1–5%', 'копия гена, переносит информацию к рибосомам'],
+          ['тРНК', '10–15%', '«клеверный лист», доставляет аминокислоты'],
+          ['рРНК', '80–85%', 'вместе с белками образует рибосому'],
+        ]],
+        ['table', ['Признак', 'ДНК', 'РНК'], [
+          ['Цепей', 'две', 'одна'],
+          ['Сахар', 'дезоксирибоза', 'рибоза'],
+          ['Основания', 'А, Т, Г, Ц', 'А, У, Г, Ц'],
+          ['Количество в клетке', 'постоянное', 'зависит от активности'],
+          ['Функция', 'хранение информации', 'синтез белка'],
+        ]],
+        ['simple', 'ДНК — книга рецептов, которую не выносят из библиотеки. иРНК — ксерокопия рецепта, рРНК — кухня, тРНК — курьеры с продуктами. Подсказка: «У РНК есть У».'],
+      ]},
+      { title: 'Репликация ДНК', blocks: [
+        ['sut', 'В S-периоде ДНК «расстёгивается», и к каждой цепи достраивается новая — получаются две одинаковые молекулы.'],
+        ['p', '<b>Свойства:</b> полуконсервативность (в каждой новой молекуле одна старая и одна новая цепь), комплементарность, антипараллельность.'],
+        ['ul', [
+          '<b>Инициация</b> — топоизомераза и хеликаза расплетают спираль, образуется репликативная вилка.',
+          '<b>Элонгация</b> — ДНК-полимераза достраивает цепи 5′→3′: <b>лидирующую</b> непрерывно, <b>отстающую</b> фрагментами Оказаки, которые сшивает лигаза.',
+          '<b>Терминация</b> — ферменты доходят до конца молекулы или встречают другую вилку.',
+        ]],
+        ['table', ['Фермент', 'Роль'], [
+          ['Топоизомераза', 'снимает напряжение спирали'],
+          ['Хеликаза', 'разрывает водородные связи, расплетает'],
+          ['SSB-белки', 'не дают цепям слипнуться'],
+          ['Праймаза', 'синтезирует РНК-праймер (затравку)'],
+          ['ДНК-полимераза', 'наращивает новую цепь'],
+          ['Лигаза', 'сшивает фрагменты Оказаки'],
+        ]],
+        ['simple', 'Расстегнуть молнию и к каждой половинке пришить новую. Полимераза шьёт только в одну сторону, поэтому одну цепь шьёт без остановки, а другую — задом наперёд короткими кусками.'],
+      ]},
+      { title: 'Репарация', blocks: [
+        ['sut', 'Ферменты находят ошибки и повреждения ДНК, вырезают их и пишут правильно по второй, целой цепи.'],
+        ['p', '<b>Эксцизионная репарация:</b> нуклеаза вырезает повреждение (например, тиминовый димер от УФ), ДНК-полимераза заполняет брешь, лигаза сшивает.'],
+        ['imp', 'Нарушение репарации ведёт к онкологическим и тяжёлым генным заболеваниям. Пример (не из лекции) — пигментная ксеродерма: повреждения от солнца не исправляются, резко растёт риск рака кожи.'],
+      ]},
+    ],
+    remember: [
+      'Нуклеотид = азотистое основание + пентоза + остаток фосфорной кислоты.',
+      'ДНК: дезоксирибоза, А Т Г Ц, две антипараллельные цепи. РНК: рибоза, А У Г Ц, одна цепь.',
+      'А=Т (2 связи), Г≡Ц (3 связи); А + Г = Т + Ц.',
+      'Виды РНК: иРНК (копия гена), тРНК (носит аминокислоты), рРНК (рибосома).',
+      'Репликация полуконсервативна; идёт в S-периоде.',
+      'Отстающая цепь — фрагменты Оказаки, сшивает лигаза.',
+    ],
+    facts: [
+      'Модель двойной спирали Уотсон и Крик построили во многом благодаря рентгеновским снимкам Розалинд Франклин.',
+      'ДНК-полимераза ошибается примерно раз на сто тысяч букв, но с проверкой и репарацией итоговая ошибка — около одной на миллиард.',
+    ],
+    cards: [
+      ['Из чего состоит нуклеотид?', 'Азотистое основание + пентоза + остаток фосфорной кислоты'],
+      ['Сахар ДНК и сахар РНК', 'Дезоксирибоза и рибоза'],
+      ['Какое основание есть в РНК вместо тимина?', 'Урацил (У)'],
+      ['Сколько водородных связей между Г и Ц?', 'Три'],
+      ['Правило Чаргаффа', 'А = Т, Г = Ц; А + Г = Т + Ц'],
+      ['Что значит «полуконсервативная» репликация?', 'В каждой новой молекуле одна старая и одна новая цепь'],
+      ['Что такое фрагменты Оказаки?', 'Короткие отрезки отстающей цепи'],
+      ['Что делает хеликаза?', 'Расплетает спираль, разрывая водородные связи'],
+      ['Что делает лигаза?', 'Сшивает фрагменты ДНК в одну цепь'],
+      ['Какая РНК самая многочисленная?', 'рРНК, до 80–85%'],
+    ],
+    quiz: [
+      { q: 'Какое основание комплементарно аденину в ДНК?', o: ['Гуанин', 'Цитозин', 'Тимин', 'Урацил'], a: 2, why: 'А=Т, две водородные связи.' },
+      { q: 'В цепи ДНК 30% аденина. Сколько гуанина?', o: ['30%', '20%', '40%', '70%'], a: 1, why: 'Т тоже 30%, на Г+Ц остаётся 40%, гуанина — половина, 20%.' },
+      { q: 'Какая РНК доставляет аминокислоты к рибосоме?', o: ['иРНК', 'тРНК', 'рРНК', 'мяРНК'], a: 1, why: 'Транспортная РНК в форме клеверного листа.' },
+      { q: 'Где в клеточном цикле идёт репликация?', o: ['G1', 'S', 'G2', 'Метафаза'], a: 1, why: 'Синтетический период.' },
+      { q: 'Какой фермент сшивает фрагменты Оказаки?', o: ['Хеликаза', 'Праймаза', 'Лигаза', 'Топоизомераза'], a: 2, why: 'ДНК-лигаза — «клей» между кусками.' },
+    ],
+  },
+  {
+    id: 'gen-3', num: 3, title: 'Генетический код и биосинтез белка',
+    sub: 'Кодоны и свойства кода, транскрипция, сплайсинг, трансляция',
+    sections: [
+      { title: 'Как информация превращается в белок', blocks: [
+        ['sut', 'ДНК хранит инструкцию, а работают белки. Информация идёт по цепочке: ДНК → иРНК → белок.'],
+        ['p', '<b>Генетический код</b> — система записи последовательности аминокислот белка в виде последовательности нуклеотидов. Одну аминокислоту кодирует тройка нуклеотидов — <b>кодон (триплет)</b>.'],
+        ['simple', 'Ген — рецепт, записанный в библиотеке-ядре. Клетка снимает с него копию (иРНК), несёт на кухню-рибосому и там по тройкам букв собирает белок из аминокислот, как бусы.'],
+      ]},
+      { title: 'Свойства генетического кода', blocks: [
+        ['sut', '4 буквы дают 64 тройки, а аминокислот 20 — поэтому код избыточен, но однозначен.'],
+        ['ol', [
+          '<b>Триплетность</b> — аминокислоту кодируют три нуклеотида: 4³ = 64 кодона.',
+          '<b>Вырожденность (избыточность)</b> — у одной аминокислоты бывает несколько кодонов; защита от мутаций.',
+          '<b>Однозначность (специфичность)</b> — каждый кодон означает только одну аминокислоту.',
+          '<b>Неперекрываемость</b> — один нуклеотид входит только в один кодон.',
+          '<b>Непрерывность</b> — код читается подряд, «без запятых». Выпал нуклеотид — рамка сдвигается.',
+          '<b>Универсальность</b> — код одинаков почти для всего живого.',
+          '<b>Старт и стоп</b> — АУГ (метионин) начинает синтез; УАА, УАГ, УГА — стоп-кодоны.',
+        ]],
+        ['simple', 'Представь фразу из трёхбуквенных слов: «КОТ ЕЛ ЖИР». Если выпадет одна буква, всё дальше превратится в бессмыслицу: «КТЕ ЛЖИ Р». Так работает сдвиг рамки.'],
+      ]},
+      { title: 'Транскрипция и процессинг', blocks: [
+        ['sut', 'В ядре с гена снимается копия — иРНК, а потом из неё вырезается всё лишнее.'],
+        ['p', '<b>Транскрипция</b> — синтез РНК на матрице ДНК. Фермент <b>РНК-полимераза</b> садится на промотор, расплетает участок ДНК и строит иРНК по принципу комплементарности (напротив А ставит У).'],
+        ['p', '<b>Процессинг</b> — созревание иРНК: <b>сплайсинг</b> (вырезаются некодирующие участки — <b>интроны</b>, а <b>экзоны</b> сшиваются), а также присоединение «колпачка» и хвоста, защищающих иРНК.'],
+        ['simple', 'Ген похож на фильм с рекламой: экзоны — сам фильм, интроны — рекламные вставки. Сплайсинг вырезает рекламу и склеивает фильм.'],
+      ]},
+      { title: 'Трансляция', blocks: [
+        ['sut', 'На рибосоме тРНК подносят аминокислоты, сверяя антикодон с кодоном, и из них собирается белок.'],
+        ['ol', [
+          '<b>Инициация</b> — иРНК связывается с рибосомой, на старт-кодон АУГ приходит тРНК с метионином.',
+          '<b>Элонгация</b> — тРНК приносят аминокислоты по кодонам, между ними образуются пептидные связи, рибосома сдвигается на один триплет.',
+          '<b>Терминация</b> — на стоп-кодоне синтез останавливается, белок отделяется.',
+        ]],
+        ['imp', 'Мутация в одном нуклеотиде может заменить аминокислоту в белке. Пример: при серповидноклеточной анемии одна замена в гене гемоглобина меняет форму эритроцитов.'],
+      ]},
+    ],
+    remember: [
+      'ДНК → иРНК (транскрипция, ядро) → белок (трансляция, рибосома).',
+      'Кодон — 3 нуклеотида; всего 64 кодона, аминокислот 20.',
+      'Свойства кода: триплетность, вырожденность, однозначность, неперекрываемость, непрерывность, универсальность.',
+      'Старт — АУГ (метионин); стоп — УАА, УАГ, УГА.',
+      'Сплайсинг: интроны вырезают, экзоны сшивают.',
+      'Антикодон тРНК комплементарен кодону иРНК.',
+    ],
+    facts: [
+      'Код почти универсален, поэтому бактерии можно «научить» вырабатывать человеческий инсулин: они правильно прочитают человеческий ген.',
+      'У человека около 20 тысяч генов, кодирующих белки, но это лишь около 1–2% всей ДНК.',
+    ],
+    cards: [
+      ['Что такое кодон?', 'Тройка нуклеотидов иРНК, кодирующая одну аминокислоту'],
+      ['Сколько всего кодонов?', '64 (4³)'],
+      ['Что такое вырожденность кода?', 'Одну аминокислоту могут кодировать несколько кодонов'],
+      ['Старт-кодон', 'АУГ (метионин)'],
+      ['Стоп-кодоны', 'УАА, УАГ, УГА'],
+      ['Где идёт транскрипция?', 'В ядре'],
+      ['Где идёт трансляция?', 'На рибосомах в цитоплазме'],
+      ['Что такое сплайсинг?', 'Вырезание интронов и сшивание экзонов при созревании иРНК'],
+      ['Что такое антикодон?', 'Тройка нуклеотидов тРНК, комплементарная кодону иРНК'],
+    ],
+    quiz: [
+      { q: 'Сколько нуклеотидов кодирует одну аминокислоту?', o: ['1', '2', '3', '4'], a: 2, why: 'Код триплетный.' },
+      { q: 'Свойство кода «один кодон — одна аминокислота» называется…', o: ['вырожденность', 'однозначность', 'универсальность', 'непрерывность'], a: 1, why: 'Однозначность (специфичность).' },
+      { q: 'Что удаляется при сплайсинге?', o: ['Экзоны', 'Интроны', 'Кодоны', 'Промотор'], a: 1, why: 'Интроны вырезают, экзоны сшивают.' },
+      { q: 'Какой кодон начинает синтез белка?', o: ['УАА', 'АУГ', 'УГА', 'ГГГ'], a: 1, why: 'АУГ — старт, кодирует метионин.' },
+      { q: 'Какой участок ДНК соответствует кодону иРНК АУГ?', o: ['ТАЦ', 'УАЦ', 'АТГ', 'ГТА'], a: 0, why: 'Напротив А — Т, напротив У — А, напротив Г — Ц.' },
+    ],
+  },
+  {
+    id: 'gen-4', num: 4, title: 'Законы Менделя',
+    sub: 'Моно-, ди- и полигибридное скрещивание',
+    sections: [
+      { title: 'Основные понятия', blocks: [
+        ['sut', 'Каждый признак задаётся парой генов — по одному от каждого родителя.'],
+        ['table', ['Термин', 'Что это'], [
+          ['Аллели', 'варианты одного гена (A и a)'],
+          ['Доминантный', 'проявляется даже в одной копии (A)'],
+          ['Рецессивный', 'проявляется только в двух копиях (aa)'],
+          ['Гомозигота', 'два одинаковых аллеля: AA или aa'],
+          ['Гетерозигота', 'разные аллели: Aa'],
+          ['Генотип', 'набор генов'],
+          ['Фенотип', 'внешнее проявление признаков'],
+        ]],
+        ['p', 'Мендель (1865) скрещивал горох и считал потомков по чётким признакам: жёлтые/зелёные, гладкие/морщинистые семена.'],
+      ]},
+      { title: 'I и II законы: моногибридное скрещивание', blocks: [
+        ['sut', 'При скрещивании чистых линий все гибриды одинаковые, а в следующем поколении признаки расщепляются 3 : 1.'],
+        ['p', '<b>I закон — единообразия гибридов первого поколения:</b> AA × aa → все Aa, одинаковый фенотип (доминантный).'],
+        ['p', '<b>II закон — расщепления:</b> Aa × Aa → по фенотипу <b>3 : 1</b>, по генотипу <b>1 AA : 2 Aa : 1 aa</b>.'],
+        ['svg', 'punnett', 'Решётка Пеннета: Aa × Aa'],
+        ['p', '<b>Закон чистоты гамет:</b> в каждую гамету попадает только один аллель из пары. Цитологическая основа — расхождение гомологичных хромосом в мейозе.'],
+        ['simple', 'Рецессивный признак у гибрида не исчезает, а «прячется». Когда встречаются два носителя, у четверти детей спрятанный признак проявится.'],
+      ]},
+      { title: 'Медицинский смысл', blocks: [
+        ['sut', 'Два здоровых носителя рецессивной болезни имеют риск 25% больного ребёнка при каждой беременности.'],
+        ['table', ['Признак', 'Доминантный', 'Рецессивный'], [
+          ['Норма', 'карие глаза, тёмные волосы', 'голубые глаза, светлые волосы'],
+          ['Патология', 'полидактилия, ахондроплазия', 'фенилкетонурия, альбинизм, муковисцидоз'],
+        ]],
+        ['imp', 'Здоровый (AA) × больной (aa) → все дети носители (Aa). Носитель × носитель → 25% больных, 50% носителей, 25% здоровых.'],
+      ]},
+      { title: 'III закон: дигибридное скрещивание', blocks: [
+        ['sut', 'Гены из разных хромосом наследуются независимо: в F2 расщепление 9 : 3 : 3 : 1.'],
+        ['p', 'AaBb даёт 4 типа гамет: AB, Ab, aB, ab. AaBb × AaBb → решётка 4×4 = 16 комбинаций, по фенотипу <b>9 : 3 : 3 : 1</b>.'],
+        ['p', '<b>Для полигибрида</b> (n пар генов, все гетерозиготны): типов гамет — 2ⁿ, комбинаций в решётке — 4ⁿ, генотипов — 3ⁿ, фенотипов — 2ⁿ (при полном доминировании).'],
+        ['p', 'Закон работает, если гены лежат в <b>разных</b> хромосомах. Гены в одной хромосоме наследуются сцепленно (Т. Морган).'],
+        ['note', 'Формулы для полигибрида дописаны по стандартной программе — сверь с обозначениями преподавателя.'],
+      ]},
+    ],
+    remember: [
+      'I закон: AA × aa → все Aa.',
+      'II закон: Aa × Aa → 3 : 1 по фенотипу, 1 : 2 : 1 по генотипу.',
+      'III закон: AaBb × AaBb → 9 : 3 : 3 : 1, если гены в разных хромосомах.',
+      'Чистота гамет: в гамете один аллель из пары.',
+      'Два носителя → риск 25% больного ребёнка.',
+      'Полигибрид: гамет 2ⁿ, генотипов 3ⁿ.',
+    ],
+    facts: [
+      'Мендель опубликовал работу в 1865 году, но её не поняли. Законы «переоткрыли» только в 1900 году три учёных одновременно.',
+      'Мендель вырастил и описал около 28 тысяч растений гороха.',
+    ],
+    cards: [
+      ['Что такое аллели?', 'Варианты одного гена (A и a)'],
+      ['Гомозигота и гетерозигота', 'AA или aa — гомозигота; Aa — гетерозигота'],
+      ['I закон Менделя', 'Единообразие гибридов F1: AA × aa → все Aa'],
+      ['II закон Менделя', 'Расщепление: Aa × Aa → 3 : 1 по фенотипу, 1 : 2 : 1 по генотипу'],
+      ['III закон Менделя', 'Независимое наследование: 9 : 3 : 3 : 1'],
+      ['Закон чистоты гамет', 'В каждую гамету попадает только один аллель из пары'],
+      ['Сколько типов гамет у AaBb?', '4: AB, Ab, aB, ab'],
+      ['Риск больного ребёнка у двух носителей рецессивной болезни', '25% при каждой беременности'],
+    ],
+    quiz: [
+      { q: 'Aa × Aa. Какое расщепление по фенотипу?', o: ['1 : 1', '3 : 1', '1 : 2 : 1', '9 : 3 : 3 : 1'], a: 1, why: '3 доминантных : 1 рецессивный.' },
+      { q: 'Сколько типов гамет даёт AaBbCc?', o: ['3', '6', '8', '27'], a: 2, why: '2ⁿ = 2³ = 8.' },
+      { q: 'Родители здоровы, но оба носители (Aa). Вероятность больного ребёнка?', o: ['0%', '25%', '50%', '100%'], a: 1, why: 'aa появляется в одной клетке решётки из четырёх.' },
+      { q: 'При каком условии выполняется III закон?', o: ['Гены в одной хромосоме', 'Гены в разных хромосомах', 'Только у гороха', 'При неполном доминировании'], a: 1, why: 'Сцепленные гены наследуются вместе.' },
+      { q: 'AA × aa. Какие будут гибриды F1?', o: ['Все AA', 'Все Aa', 'Все aa', 'Половина Aa'], a: 1, why: 'I закон — единообразие.' },
+    ],
+  },
+  ],
+};
+
+// ===== МИКРОБИОЛОГИЯ И ИММУНОЛОГИЯ =====
+const IMM = {
+  id: 'immunology', name: 'Основы микробиологии и иммунологии', short: 'Микробиология',
+  color: '#2f6fd6', soft: '#e6f0ff', ink: '#163f86', emoji: '🦠',
+  lectures: [
+  {
+    id: 'imm-1', num: 1, title: 'Иммунопрофилактика и вакцины',
+    sub: 'Виды иммунопрофилактики, 9 типов вакцин, реакции и противопоказания',
+    sections: [
+      { title: 'Иммунопрофилактика', blocks: [
+        ['sut', 'Иммунопрофилактика — способ защитить людей от инфекций, создав или усилив искусственный иммунитет.'],
+        ['p', '<b>Иммунопрофилактика (ИП)</b> — защита населения от инфекционных болезней путём создания или усиления искусственного иммунитета.'],
+        ['table', ['Вид ИП', 'Чем проводят'], [
+          ['Специфическая активная', 'вакцины: организм сам вырабатывает иммунитет'],
+          ['Специфическая пассивная', 'сыворотки и иммуноглобулины: вводят готовые антитела'],
+          ['Неспецифическая', 'здоровый образ жизни, витамины, закаливание'],
+          ['Стимулирующая', 'иммуномодуляторы'],
+          ['Подавляющая', 'иммуносупрессоры'],
+        ]],
+        ['simple', 'Вакцина — тренировка: иммунитет учится сам и запоминает врага надолго. Сыворотка — «наёмная охрана»: готовые антитела помогают сразу, но ненадолго.'],
+      ]},
+      { title: 'Что такое вакцина', blocks: [
+        ['sut', 'Вакцина содержит антигены возбудителя, на которых иммунитет тренируется, не болея.'],
+        ['p', '<b>Вакцины</b> — препараты для активной иммунопрофилактики и иммунотерапии.'],
+        ['ul', [
+          '<b>Моновакцины</b> — антигены одного штамма или вида возбудителя.',
+          '<b>Поливакцины</b> — антигены нескольких возбудителей сразу.',
+        ]],
+        ['p', 'После вакцинации появляются антитела и <b>клетки памяти</b>. При встрече с настоящим возбудителем срабатывает быстрый вторичный ответ.'],
+        ['imp', 'Вакцины бывают не только для профилактики: аутовакцины применяют для лечения хронических инфекций, например хронического фурункулёза.'],
+      ]},
+      { title: 'Девять типов вакцин', blocks: [
+        ['sut', 'Вакцины различаются тем, что именно в них вводят: целый микроб, его молекулы, смесь, очищенные антигены или генетическую инструкцию.'],
+        ['table', ['Тип вакцины', 'Что внутри / пример'], [
+          ['<b>1. Корпускулярные</b>', 'целые микробы или вирусы: живые ослабленные (аттенуированные) или убитые'],
+          ['<b>2. Молекулярные</b>', 'анатоксины (обезвреженные токсины: дифтерийный, столбнячный) и субъединичные (белки оболочки, антигриппозная)'],
+          ['<b>3. Ассоциированные</b>', 'убитые микробы + их компоненты: АКДС'],
+          ['<b>4. Химические</b>', 'очищенные антигены: антигриппозная, антисальмонеллёзная, противобрюшнотифозная'],
+          ['<b>5. Генно-инженерные</b>', 'антигены из генной инженерии: гепатит B, сифилис, холера, бешенство'],
+          ['<b>6. Живые с реконструированным геномом</b>', 'геном разбирают на гены и собирают без опасных'],
+          ['<b>7. Антиидиотипические</b>', 'без антигена, антитела-«двойники» (против ВИЧ)'],
+          ['<b>8. ДНК-вакцины</b>', 'фрагменты ДНК и плазмиды: клетки сами делают антиген'],
+          ['<b>9. Рибосомальные</b>', 'рибосомы возбудителя: бронхиальная, дизентерийная'],
+        ]],
+        ['p', '<b>АКДС</b> — адсорбированная коклюшно-дифтерийно-столбнячная вакцина: убитые коклюшные микробы + дифтерийный и столбнячный анатоксины. «А» — антигены адсорбированы на гидроксиде алюминия, он усиливает иммунный ответ.'],
+        ['simple', 'Анатоксин — яд, у которого «вынули жало»: он больше не ядовит, но иммунитет его узнаёт и учится обезвреживать настоящий токсин. Генно-инженерная вакцина — ген нужного белка вставляют, например, в дрожжи, и они штампуют этот белок.'],
+        ['note', 'Последний пример химической вакцины в тетради читался неуверенно — сверь с записью у одногруппников.'],
+      ]},
+      { title: 'Реакции и противопоказания', blocks: [
+        ['sut', 'Поствакцинальная реакция — нормальный ответ организма; осложнение — редкое и тяжёлое нарушение.'],
+        ['table', ['', 'Реакция', 'Осложнение'], [
+          ['Что это', 'ожидаемый ответ на вакцину', 'тяжёлые и редкие нарушения'],
+          ['Примеры', 'покраснение, уплотнение, небольшая температура', 'анафилактический шок, судороги'],
+          ['Что делать', 'обычно проходит за 1–3 дня', 'лечение, каждый случай регистрируют'],
+        ]],
+        ['imp', 'При остром заболевании прививку откладывают. После тяжёлой реакции эту вакцину повторно не вводят. Живые вакцины противопоказаны при тяжёлом иммунодефиците и беременности. После прививки наблюдают не менее 30 минут.'],
+        ['p', '<b>Ревакцинация</b> — повторное введение вакцины, чтобы поддержать иммунитет, созданный предыдущими прививками.'],
+      ]},
+    ],
+    remember: [
+      'ИП: специфическая (активная — вакцины, пассивная — сыворотки), неспецифическая, стимулирующая, подавляющая.',
+      'Вакцины — препараты для активной иммунопрофилактики и иммунотерапии.',
+      'Моновакцины — один возбудитель, поливакцины — несколько.',
+      'АКДС: убитые коклюшные + дифтерийный и столбнячный анатоксины.',
+      'Антиидиотипические — вакцины без антигена.',
+      'После прививки наблюдение не менее 30 минут.',
+    ],
+    facts: [
+      'Слово «вакцина» происходит от латинского vacca — корова: первую прививку Эдвард Дженнер сделал в 1796 году материалом коровьей оспы.',
+      'Благодаря вакцинации натуральная оспа стала первой болезнью, полностью уничтоженной на Земле (1980 год).',
+    ],
+    cards: [
+      ['Что такое иммунопрофилактика?', 'Защита населения от инфекций путём создания или усиления искусственного иммунитета'],
+      ['Чем проводят активную ИП? А пассивную?', 'Активную — вакцинами, пассивную — сыворотками и иммуноглобулинами'],
+      ['Определение вакцины', 'Препараты для активной иммунопрофилактики и иммунотерапии'],
+      ['Моновакцина и поливакцина', 'Антигены одного возбудителя / нескольких возбудителей'],
+      ['Что такое анатоксин?', 'Обезвреженный токсин: не ядовит, но вызывает выработку антитоксинов'],
+      ['Состав АКДС', 'Убитые коклюшные микробы + дифтерийный и столбнячный анатоксины'],
+      ['Что означает «А» в АКДС?', 'Адсорбированная: антигены на гидроксиде алюминия'],
+      ['Вакцины без антигена', 'Антиидиотипические'],
+      ['Пример генно-инженерной вакцины', 'Против гепатита B'],
+      ['Сколько наблюдают после прививки?', 'Не менее 30 минут'],
+    ],
+    quiz: [
+      { q: 'Введение готовых антител — это…', o: ['активная ИП', 'пассивная ИП', 'неспецифическая ИП', 'подавляющая ИП'], a: 1, why: 'Сыворотки и иммуноглобулины — пассивная специфическая ИП.' },
+      { q: 'К какому типу относится АКДС?', o: ['Химическая', 'Генно-инженерная', 'Ассоциированная', 'Рибосомальная'], a: 2, why: 'Смешаны убитые микробы и их компоненты (анатоксины).' },
+      { q: 'Какие вакцины не содержат антигена?', o: ['ДНК-вакцины', 'Антиидиотипические', 'Анатоксины', 'Субъединичные'], a: 1, why: 'Вместо антигена — антитела-«двойники».' },
+      { q: 'Кому противопоказаны живые вакцины?', o: ['Людям старше 60', 'При тяжёлом иммунодефиците', 'После насморка год назад', 'Всем взрослым'], a: 1, why: 'Ослабленный микроб может вызвать болезнь при слабом иммунитете; также при беременности.' },
+    ],
+  },
+  ],
+};
+
+// ===== АНАТОМИЯ =====
+const ANAT = {
+  id: 'anatomy', name: 'Анатомия', short: 'Анатомия',
+  color: '#d9673a', soft: '#fff0e8', ink: '#8a3412', emoji: '🦴',
+  lectures: [
+  {
+    id: 'anat-1', num: 1, title: 'Кости, суставы, связки и переломы',
+    sub: 'Строение кости, соединения, отделы скелета, переломы и первая помощь',
+    link: { url: 'https://claude.ai/artifact/YYWF4rj18bboTiqjr21NEZ', label: 'Полный атлас: 30+ схем по всем отделам' },
+    sections: [
+      { title: 'Кость как орган', blocks: [
+        ['sut', 'Кость — живой орган: снаружи надкостница, внутри компактное и губчатое вещество и костный мозг.'],
+        ['ul', [
+          '<b>Надкостница</b> — оболочка с сосудами и нервами; за счёт неё кость растёт в толщину и срастается после перелома.',
+          '<b>Компактное вещество</b> — плотный наружный слой; <b>губчатое</b> — ячеистое, внутри.',
+          '<b>Трубчатая кость</b>: диафиз (тело), эпифизы (концы), метафизы (между ними, зона роста).',
+          '<b>Красный костный мозг</b> — кроветворение; <b>жёлтый</b> — жировая ткань.',
+        ]],
+        ['p', '<b>Виды костей:</b> трубчатые (плечевая, бедренная), губчатые (позвонки, кости запястья), плоские (лопатка, кости свода черепа), смешанные, воздухоносные (верхняя челюсть).'],
+      ]},
+      { title: 'Соединения костей', blocks: [
+        ['sut', 'Кости соединяются либо сплошь (без щели), либо суставами с полостью.'],
+        ['ul', [
+          '<b>Непрерывные</b>: синдесмозы (соединительная ткань: связки, швы черепа), синхондрозы (хрящ: межпозвоночные диски), синостозы (костная ткань: крестец).',
+          '<b>Прерывные — суставы</b>: суставные поверхности, покрытые хрящом, суставная капсула, полость с синовиальной жидкостью.',
+        ]],
+        ['p', '<b>Связка</b> соединяет кость с костью, <b>сухожилие</b> — мышцу с костью.'],
+        ['simple', 'Связка — ремень, который держит две кости вместе. Сухожилие — трос, которым мышца тянет кость.'],
+      ]},
+      { title: 'Отделы скелета', blocks: [
+        ['sut', 'Около 206 костей: череп, позвоночник, грудная клетка и кости конечностей.'],
+        ['table', ['Отдел', 'Главное'], [
+          ['Череп', 'мозговой и лицевой; подвижна только нижняя челюсть'],
+          ['Позвоночник', 'шейный 7, грудной 12, поясничный 5, крестец 5 сросшихся, копчик 3–5'],
+          ['Грудная клетка', '12 пар рёбер: 7 истинных, 3 ложных, 2 колеблющихся; грудина'],
+          ['Верхняя конечность', 'ключица, лопатка, плечевая, лучевая и локтевая, кисть (27 костей)'],
+          ['Нижняя конечность', 'тазовая кость, бедренная, надколенник, большеберцовая и малоберцовая, стопа (26 костей)'],
+        ]],
+        ['simple', 'Запоминалка для позвонков: 7–12–5–5–4. Как время: завтрак в 7, обед в 12, ужин в 5.'],
+      ]},
+      { title: 'Переломы и первая помощь', blocks: [
+        ['sut', 'Перелом — нарушение целостности кости; первая помощь — обезболить, обездвижить, при открытом — закрыть рану.'],
+        ['ul', [
+          '<b>Открытый / закрытый</b> — есть ли рана над переломом.',
+          '<b>Полный / неполный (трещина)</b>, <b>со смещением / без</b>.',
+          '<b>По линии</b>: поперечный, косой, винтообразный, оскольчатый, вколоченный, компрессионный.',
+        ]],
+        ['table', ['Абсолютные признаки', 'Относительные признаки'], [
+          ['патологическая подвижность', 'боль'],
+          ['крепитация (хруст отломков)', 'отёк, гематома'],
+          ['деформация конечности', 'нарушение функции'],
+          ['отломки в ране', 'вынужденное положение'],
+        ]],
+        ['imp', 'Иммобилизация (шина) обязательно захватывает два соседних сустава — выше и ниже перелома. При открытом переломе: остановить кровотечение, наложить стерильную повязку, отломки не вправлять.'],
+      ]},
+    ],
+    remember: [
+      'Надкостница — рост в толщину и сращение.',
+      'Соединения: синдесмоз, синхондроз, синостоз; сустав — с полостью и синовиальной жидкостью.',
+      'Связка: кость–кость; сухожилие: мышца–кость.',
+      'Позвонки 7–12–5–5–4.',
+      'Рёбра: 7 истинных, 3 ложных, 2 колеблющихся.',
+      'Абсолютные признаки перелома: подвижность, крепитация, деформация, отломки.',
+      'Шина — через два соседних сустава.',
+    ],
+    facts: [
+      'Самая маленькая кость — стремечко в среднем ухе, около 3 мм. Самая длинная — бедренная, примерно четверть роста человека.',
+      'Подъязычная кость — единственная, не соединённая ни с одной другой костью: она висит на мышцах и связках.',
+      'У жирафа, мыши и человека одинаково по 7 шейных позвонков.',
+    ],
+    cards: [
+      ['За счёт чего кость растёт в толщину?', 'За счёт надкостницы'],
+      ['Что такое синхондроз?', 'Непрерывное соединение костей хрящом (например, межпозвоночный диск)'],
+      ['Чем связка отличается от сухожилия?', 'Связка соединяет кость с костью, сухожилие — мышцу с костью'],
+      ['Количество позвонков по отделам', '7 шейных, 12 грудных, 5 поясничных, крестец (5), копчик (3–5)'],
+      ['Сколько истинных рёбер?', '7 пар'],
+      ['Абсолютные признаки перелома', 'Патологическая подвижность, крепитация, деформация, отломки в ране'],
+      ['Правило иммобилизации', 'Шина захватывает два соседних сустава'],
+      ['Где находится красный костный мозг и что делает?', 'В губчатом веществе; кроветворение'],
+    ],
+    quiz: [
+      { q: 'Какой признак перелома абсолютный?', o: ['Боль', 'Отёк', 'Крепитация', 'Гематома'], a: 2, why: 'Хруст отломков бывает только при переломе.' },
+      { q: 'Сколько поясничных позвонков?', o: ['7', '12', '5', '4'], a: 2, why: '7–12–5–5–4.' },
+      { q: 'Связка соединяет…', o: ['мышцу с костью', 'кость с костью', 'мышцу с мышцей', 'кожу с мышцей'], a: 1, why: 'Мышцу с костью соединяет сухожилие.' },
+      { q: 'Сколько суставов должна захватывать шина?', o: ['Ни одного', 'Один ближайший', 'Два соседних', 'Все суставы конечности'], a: 2, why: 'Выше и ниже места перелома.' },
+    ],
+  },
+  { id: 'anat-2', num: 2, title: 'Зубы', sub: 'Скоро появится', soon: true },
+  ],
+};
+
+// ===== МЕДИЦИНСКАЯ ИНФОРМАТИКА =====
+const INF = {
+  id: 'informatics', name: 'Медицинская информатика', short: 'Информатика',
+  color: '#1f9d6b', soft: '#e3f6ee', ink: '#0d5c3e', emoji: '💻',
+  teacher: 'Молчанов В. В.',
+  lectures: [ { id: 'inf-1', num: 1, title: 'Материалы скоро появятся', sub: 'Скоро появится', soon: true } ],
+};
+
+const SUBJECTS = [GEN, IMM, ANAT, INF];
+
+</script>
+<script>
+(function(){
+'use strict';
+const $ = (s, el=document) => el.querySelector(s);
+const app = $('#app'), topIn = $('#topIn'), top = $('#top');
+
+/* ---------- storage (best effort) ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('s201:'+k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('s201:'+k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ---------- index ---------- */
+const LEC = {}, SUBJ = {};
+SUBJECTS.forEach(s => { SUBJ[s.id] = s; s.lectures.forEach(l => { l.subject = s; LEC[l.id] = l; }); });
+const hashId = id => id.replace(/[^a-z0-9-]/gi,'');
+
+/* ---------- icons ---------- */
+const I = {
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  chev:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  print:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>',
+  pdf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+};
+
+/* ---------- SVG diagrams ---------- */
+const SVGS = {
+  chromosome: `<svg viewBox="0 0 400 230" width="400" font-family="Inter,sans-serif" font-size="12">
+    <g fill="#c9bcf5" stroke="#46309a" stroke-width="2">
+      <path d="M128 22 q-16 0 -16 16 v52 q0 14 14 22 q-14 8 -14 22 v62 q0 16 16 16 q16 0 16 -16 v-62 q0 -14 -10 -22 q10 -8 10 -22 v-52 q0 -16 -16 -16z"/>
+      <path d="M176 22 q-16 0 -16 16 v52 q0 14 10 22 q-10 8 -10 22 v62 q0 16 16 16 q16 0 16 -16 v-62 q0 -14 -14 -22 q14 -8 14 -22 v-52 q0 -16 -16 -16z"/>
+    </g>
+    <ellipse cx="152" cy="112" rx="18" ry="8" fill="#e0527a"/>
+    <g fill="#ef9a3a"><rect x="112" y="22" width="32" height="8" rx="4"/><rect x="160" y="22" width="32" height="8" rx="4"/><rect x="112" y="204" width="32" height="8" rx="4"/><rect x="160" y="204" width="32" height="8" rx="4"/></g>
+    <g stroke="#9aa0ad" stroke-width="1.4"><path d="M198 26 H250"/><path d="M172 112 H250"/><path d="M196 65 H250"/><path d="M196 165 H250"/><path d="M108 140 H60"/></g>
+    <g fill="#1d2030"><text x="256" y="30">теломера</text><text x="256" y="69">короткое плечо (p)</text><text x="256" y="116" font-weight="700">центромера</text><text x="256" y="169">длинное плечо (q)</text><text x="8" y="136">хроматида</text><text x="8" y="150" fill="#6a6f82">(одна из двух)</text></g>
+  </svg>`,
+  dna: `<svg viewBox="0 0 360 200" width="360" font-family="Inter,sans-serif" font-weight="700" font-size="15">
+    ${[['А','Т',2],['Г','Ц',3],['Т','А',2],['Ц','Г',3],['А','Т',2]].map((p,i)=>{
+      const y=24+i*36, col={'А':'#3f9e5c','Т':'#e0527a','Г':'#ef9a3a','Ц':'#3d7fd9'};
+      const lines=Array.from({length:p[2]},(_,k)=>`<line x1="168" x2="192" y1="${y-6+k*(12/(p[2]-1||1))}" y2="${y-6+k*(12/(p[2]-1||1))}" stroke="#9aa0ad" stroke-width="2" stroke-dasharray="3 3"/>`).join('');
+      return `<rect x="96" y="${y-14}" width="70" height="28" rx="8" fill="${col[p[0]]}"/><text x="131" y="${y+5}" fill="#fff" text-anchor="middle">${p[0]}</text>${lines}<rect x="194" y="${y-14}" width="70" height="28" rx="8" fill="${col[p[1]]}"/><text x="229" y="${y+5}" fill="#fff" text-anchor="middle">${p[1]}</text>`;
+    }).join('')}
+    <rect x="78" y="8" width="10" height="182" rx="5" fill="#d9d4ee"/><rect x="272" y="8" width="10" height="182" rx="5" fill="#d9d4ee"/>
+    <g font-size="11" fill="#6a6f82" font-weight="600"><text x="20" y="22">5′</text><text x="20" y="190">3′</text><text x="320" y="22">3′</text><text x="320" y="190">5′</text></g>
+  </svg>`,
+  punnett: `<svg viewBox="0 0 300 230" width="300" font-family="Inter,sans-serif" font-size="16" font-weight="700" text-anchor="middle">
+    <text x="190" y="22" font-size="12" fill="#6a6f82" font-weight="600">гаметы отца</text>
+    <text x="22" y="140" font-size="12" fill="#6a6f82" font-weight="600" transform="rotate(-90 22 140)">гаметы матери</text>
+    <text x="150" y="50" fill="#46309a">A</text><text x="230" y="50" fill="#46309a">a</text>
+    <text x="70" y="108" fill="#46309a">A</text><text x="70" y="188" fill="#46309a">a</text>
+    <rect x="110" y="62" width="80" height="76" rx="10" fill="#c9bcf5"/><text x="150" y="98">AA</text><text x="150" y="118" font-size="11" font-weight="500" fill="#46309a">доминант.</text>
+    <rect x="194" y="62" width="80" height="76" rx="10" fill="#e3dcfb"/><text x="234" y="98">Aa</text><text x="234" y="118" font-size="11" font-weight="500" fill="#46309a">доминант.</text>
+    <rect x="110" y="142" width="80" height="76" rx="10" fill="#e3dcfb"/><text x="150" y="178">Aa</text><text x="150" y="198" font-size="11" font-weight="500" fill="#46309a">доминант.</text>
+    <rect x="194" y="142" width="80" height="76" rx="10" fill="#fde6cc"/><text x="234" y="178">aa</text><text x="234" y="198" font-size="11" font-weight="500" fill="#9b4d00">рецессив.</text>
+  </svg>`,
+};
+
+/* ---------- render helpers ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const strip = s => String(s).replace(/<[^>]+>/g,'');
+function blockHTML(b){
+  const [t,a,c] = b;
+  switch(t){
+    case 'sut': return `<div class="box sut"><span class="tag">Суть</span>${a}</div>`;
+    case 'simple': return `<div class="box simple"><span class="tag">Простыми словами</span>${a}</div>`;
+    case 'imp': return `<div class="box imp"><span class="tag">Важно</span>${a}</div>`;
+    case 'fact': return `<div class="box fact"><span class="tag">Интересно</span>${a}</div>`;
+    case 'note': return `<div class="note">ⓘ ${a}</div>`;
+    case 'p': return `<p>${a}</p>`;
+    case 'h': return `<h3>${a}</h3>`;
+    case 'ul': return `<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+    case 'ol': return `<ol>${a.map(x=>`<li>${x}</li>`).join('')}</ol>`;
+    case 'table': return `<div class="tbl"><table><thead><tr>${a.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${c.map(r=>`<tr>${r.map(d=>`<td>${d}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    case 'svg': return `<figure>${SVGS[a]||''}<figcaption>${c||''}</figcaption></figure>`;
+  }
+  return '';
+}
+function blockText(b){
+  const [t,a,c] = b;
+  if (t==='ul'||t==='ol') return a.map(strip).join(' ');
+  if (t==='table') return a.join(' ') + ' ' + c.map(r=>r.join(' ')).join(' ');
+  if (t==='svg') return c||'';
+  return strip(a);
+}
+function setAccent(s){
+  const r = document.documentElement.style;
+  r.setProperty('--acc', s ? s.color : '#7b61d6');
+  r.setProperty('--acc-soft', s ? s.soft : '#f0ecff');
+  r.setProperty('--acc-ink', s ? s.ink : '#46309a');
+}
+function topBar(title, backHash, extra=''){
+  topIn.innerHTML = backHash === null
+    ? `<div class="top-title" style="padding-left:4px">📚 Учёба · С-201</div>${extra}`
+    : `<button class="back" aria-label="Назад" data-go="${backHash}">${I.back}</button><div class="top-title">${esc(title)}</div>${extra}`;
+}
+function toast(msg){
+  const t = document.createElement('div'); t.className='toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 2600);
+}
+function progressOf(l){
+  const known = (store.get('known',{})[l.id]||[]).length;
+  const best = store.get('best',{})[l.id];
+  return { known, total: (l.cards||[]).length, best, qn: (l.quiz||[]).length };
+}
+
+/* ---------- views ---------- */
+function viewHome(){
+  setAccent(null);
+  topBar('', null, `<button class="icon-btn" data-act="install">📲 На экран</button>`);
+  const last = LEC[store.get('last','')];
+  const lecCount = s => s.lectures.filter(l=>!l.soon).length;
+  const word = n => n%10===1&&n%100!==11?'лекция':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'лекции':'лекций';
+  app.innerHTML = `
+    <div class="hero"><small>Группа С-201 · все предметы в одном месте</small>
+      <h1>Учёба</h1><p>Конспекты простыми словами, карточки и тесты. Можно скачать и распечатать.</p></div>
+    <div class="search">${I.search}<input id="q" type="search" placeholder="Поиск: «мейоз», «АКДС», «кодон»…" autocomplete="off"></div>
+    <div id="results"></div>
+    <div id="homeBody">
+      ${last ? `<div class="section-label">Продолжить</div>
+        <button class="continue" data-go="${hashId(last.id)}"><div class="em" style="background:${last.subject.soft}">${last.subject.emoji}</div>
+        <div><b>${esc(last.title)}</b><span>${esc(last.subject.short)} · лекция ${last.num}</span></div><span class="chev">${I.chev}</span></button>` : ''}
+      <div class="section-label">Предметы</div>
+      <div class="subjects">${SUBJECTS.map(s=>`
+        <button class="subj" data-go="s-${s.id}">
+          <div class="em" style="background:${s.soft}">${s.emoji}</div>
+          <h3>${esc(s.name)}</h3>
+          <div class="meta"><span>${lecCount(s) ? lecCount(s)+' '+word(lecCount(s)) : 'скоро'}</span><span class="chev">${I.chev}</span></div>
+          <div class="bar" style="background:${s.color}"></div>
+        </button>`).join('')}</div>
+      <button class="install" data-act="install"><span class="em">📲</span><div><b>Поставить на экран телефона</b><span>Будет открываться как приложение — iPhone и Android</span></div></button>
+      <div class="foot">Материалы обновляются · одна ссылка для всей группы</div>
+    </div>`;
+  const q = $('#q');
+  q.addEventListener('input', () => doSearch(q.value));
+  if (sessionQ) { q.value = sessionQ; doSearch(sessionQ); }
+}
+let sessionQ = '';
+
+function doSearch(raw){
+  sessionQ = raw;
+  const q = raw.trim().toLowerCase(), box = $('#results'), body = $('#homeBody');
+  if (q.length < 2){ box.innerHTML=''; body.style.display=''; return; }
+  body.style.display='none';
+  const hits = [];
+  Object.values(LEC).forEach(l => {
+    if (l.soon) return;
+    if (l.title.toLowerCase().includes(q)) hits.push({l, si:-1, title:l.title, text:l.sub, score:3});
+    (l.sections||[]).forEach((s,si) => {
+      const text = s.blocks.map(blockText).join(' ');
+      const inT = s.title.toLowerCase().includes(q), idx = text.toLowerCase().indexOf(q);
+      if (inT || idx>=0){
+        const from = Math.max(0, idx-50);
+        hits.push({l, si, title:s.title, text: idx>=0 ? (from?'…':'')+text.slice(from, idx+q.length+80)+'…' : text.slice(0,120)+'…', score: inT?2:1});
+      }
+    });
+    (l.cards||[]).forEach(c => { const t=(c[0]+' — '+c[1]); if (t.toLowerCase().includes(q)) hits.push({l, si:-2, title:'Карточка: '+c[0], text:c[1], score:1}); });
+  });
+  hits.sort((a,b)=>b.score-a.score);
+  const hl = s => esc(s).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m=>`<mark>${m}</mark>`);
+  box.innerHTML = hits.length ? `<div class="section-label">Найдено: ${hits.length}</div>` + hits.slice(0,40).map(h=>`
+    <button class="res" data-go="${hashId(h.l.id)}" data-sec="${h.si}">
+      <small style="color:${h.l.subject.color}">${h.l.subject.emoji} ${esc(h.l.subject.short)} · ${esc(h.l.title)}</small>
+      <b>${hl(h.title)}</b><span>${hl(h.text)}</span></button>`).join('') : `<div class="empty">Ничего не нашлось 🤔<br>Попробуй другое слово</div>`;
+}
+
+function viewSubject(s){
+  setAccent(s);
+  topBar(s.short, '');
+  app.innerHTML = `
+    <div class="subj-head" style="background:linear-gradient(135deg, ${s.color}, ${s.ink})">
+      <div class="em">${s.emoji}</div><h1>${esc(s.name)}</h1>
+      <p>${s.teacher ? 'Преподаватель: '+esc(s.teacher)+' · ' : ''}${s.lectures.filter(l=>!l.soon).length || 'пока нет'} ${s.lectures.filter(l=>!l.soon).length?'лекц.':'лекций'}</p></div>
+    ${s.lectures.map(l => {
+      if (l.soon) return `<div class="lec soon"><div class="n" style="background:${s.soft};color:${s.ink}">${l.num}</div><div><b>${esc(l.title)}</b><span>⏳ ${esc(l.sub)}</span></div></div>`;
+      const p = progressOf(l);
+      return `<button class="lec" data-go="${hashId(l.id)}">
+        <div class="n" style="background:${s.soft};color:${s.ink}">${l.num}</div>
+        <div><b>${esc(l.title)}</b><span>${esc(l.sub)}</span>
+        <div class="prog" style="color:${s.ink}">${p.known?`<span>🃏 ${p.known}/${p.total}</span>`:''}${p.best!=null?`<span>✅ тест ${p.best}/${p.qn}</span>`:''}</div></div>
+        <span class="chev">${I.chev}</span></button>`;
+    }).join('')}`;
+}
+
+let lecTab = 'notes';
+function viewLecture(l, secIdx){
+  const s = l.subject; setAccent(s);
+  store.set('last', l.id);
+  topBar(s.short, 's-'+s.id, `<button class="icon-btn" data-go="" aria-label="Главная">${I.home}</button>`);
+  app.innerHTML = `
+    <div class="lec-head"><div class="kicker">${s.emoji} ${esc(s.short)} · лекция ${l.num}${l.date?' · '+l.date:''}</div>
+      <h1>${esc(l.title)}</h1><p>${esc(l.sub)}</p></div>
+    <div class="tabs">
+      <button class="tab" data-tab="notes">📖 Конспект</button>
+      <button class="tab" data-tab="cards">🃏 Карточки</button>
+      <button class="tab" data-tab="quiz">✅ Тест</button>
+    </div>
+    <div id="pane"></div>`;
+  renderTab(l, secIdx);
+}
+function renderTab(l, secIdx){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab===lecTab));
+  const pane = $('#pane');
+  if (lecTab==='notes') renderNotes(l, pane, secIdx);
+  else if (lecTab==='cards') renderCards(l, pane);
+  else renderQuiz(l, pane);
+}
+
+function renderNotes(l, pane, secIdx){
+  pane.innerHTML = `
+    <div class="actions">
+      <button class="chip" data-act="download" data-id="${l.id}">${I.pdf} Скачать PDF</button>
+      <button class="chip" data-act="copy" data-id="${l.id}">${I.copy} Копировать текст</button>
+    </div>
+    ${l.link ? `<a class="outlink" href="${l.link.url}" target="_blank" rel="noopener"><span style="font-size:26px">🗺️</span><div><b>${esc(l.link.label)}</b><span>Открывается отдельной страницей</span></div><span class="chev">${I.chev}</span></a>` : ''}
+    <details class="toc"><summary><span>Содержание · ${l.sections.length} разделов</span><span>▾</span></summary>
+      <ol>${l.sections.map((s,i)=>`<li><a href="#" data-sec-jump="${i}">${esc(s.title)}</a></li>`).join('')}<li><a href="#" data-sec-jump="rem">Что запомнить</a></li></ol></details>
+    ${l.sections.map((s,i)=>`<section class="sec" id="sec-${i}"><h2><span class="num">${i+1}.</span><span>${esc(s.title)}</span></h2>${s.blocks.map(blockHTML).join('')}</section>`).join('')}
+    <section class="remember" id="sec-rem"><h2>📌 Что запомнить</h2><ul>${l.remember.map(r=>`<li>${r}</li>`).join('')}</ul></section>
+    ${l.facts && l.facts.length ? `<div class="facts">${l.facts.map(f=>blockHTML(['fact',f])).join('')}</div>` : ''}
+    <div style="display:flex;gap:10px;margin-top:16px"><button class="primary" style="flex:1" data-tab="cards">🃏 Учить карточки</button><button class="secondary" style="flex:1" data-tab="quiz">✅ Пройти тест</button></div>`;
+  if (secIdx!=null && secIdx>=0){ const el = $('#sec-'+secIdx); if (el) requestAnimationFrame(()=>el.scrollIntoView({block:'start'})); }
+  else window.scrollTo(0,0);
+}
+
+/* flashcards */
+function renderCards(l, pane, mode){
+  const allKnown = store.get('known',{});
+  const known = new Set(allKnown[l.id]||[]);
+  let order = l.cards.map((_,i)=>i);
+  if (mode==='unknown') order = order.filter(i=>!known.has(i));
+  if (!order.length) order = l.cards.map((_,i)=>i);
+  for (let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
+  let pos = 0, right = 0;
+  const save = () => { const a = store.get('known',{}); a[l.id] = [...known]; store.set('known', a); };
+  const draw = () => {
+    if (pos >= order.length){
+      pane.innerHTML = `<div class="done"><div class="big">${right===order.length?'🏆':'💪'}</div><h3>Круг пройден!</h3>
+        <p>Знаешь ${known.size} из ${l.cards.length} карточек</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        ${known.size<l.cards.length?`<button class="primary" data-act="cards-unknown">Повторить невыученные</button>`:''}
+        <button class="secondary" data-act="cards-all">Все заново</button></div></div>`;
+      return;
+    }
+    const i = order[pos], c = l.cards[i];
+    pane.innerHTML = `
+      <div class="fc-top"><span>Карточка ${pos+1} из ${order.length}</span><span>✅ знаю: ${known.size}/${l.cards.length}</span></div>
+      <div class="pbar"><i style="width:${pos/order.length*100}%"></i></div>
+      <div class="fc-wrap"><div class="fc" id="fc">
+        <div class="face ffront"><span class="lbl">Вопрос</span><div class="txt">${c[0]}</div><span class="hint">нажми, чтобы перевернуть</span></div>
+        <div class="face fback"><span class="lbl">Ответ</span><div class="txt">${c[1]}</div></div>
+      </div></div>
+      <div class="fc-ctrl"><button class="btn-no" id="no">🔁 Ещё учить</button><button class="btn-yes" id="yes">✅ Знаю</button></div>
+      <div style="text-align:center;margin-top:8px"><button class="link-btn" data-act="cards-reset">Сбросить прогресс</button></div>`;
+    $('#fc').onclick = () => $('#fc').classList.toggle('flip');
+    $('#yes').onclick = () => { known.add(i); right++; save(); pos++; draw(); };
+    $('#no').onclick = () => { known.delete(i); save(); pos++; draw(); };
+  };
+  pane._redraw = (m) => renderCards(l, pane, m);
+  draw();
+}
+
+/* quiz */
+function renderQuiz(l, pane){
+  const qs = l.quiz; let pos = 0, score = 0;
+  const draw = () => {
+    if (pos >= qs.length){
+      const best = store.get('best',{}); if (best[l.id]==null || score>best[l.id]){ best[l.id]=score; store.set('best',best); }
+      const pct = score/qs.length;
+      pane.innerHTML = `<div class="done"><div class="big">${pct===1?'🏆':pct>=.6?'👍':'📚'}</div><h3>${score} из ${qs.length}</h3>
+        <p>${pct===1?'Идеально! Ты готов.':pct>=.6?'Хорошо! Пару тем стоит повторить.':'Повтори конспект и попробуй ещё раз.'}</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="primary" data-act="quiz-again">Пройти ещё раз</button><button class="secondary" data-tab="notes">К конспекту</button></div></div>`;
+      return;
+    }
+    const q = qs[pos];
+    pane.innerHTML = `
+      <div class="fc-top"><span>Вопрос ${pos+1} из ${qs.length}</span><span>правильно: ${score}</span></div>
+      <div class="pbar"><i style="width:${pos/qs.length*100}%"></i></div>
+      <div class="q-card"><h3>${q.q}</h3>${q.o.map((o,i)=>`<button class="opt" data-i="${i}">${o}</button>`).join('')}<div id="why"></div></div>`;
+    pane.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+      const i = +b.dataset.i, ok = i===q.a; if (ok) score++;
+      pane.querySelectorAll('.opt').forEach(x => { x.disabled = true; const xi=+x.dataset.i; if (xi===q.a) x.classList.add('right'); else if (xi===i) x.classList.add('wrong'); });
+      $('#why').innerHTML = `<div class="why ${ok?'ok':'bad'}"><b>${ok?'Верно!':'Не совсем.'}</b> ${q.why}</div>
+        <button class="primary" style="width:100%;margin-top:12px" id="next">${pos+1<qs.length?'Дальше →':'Результат'}</button>`;
+      $('#next').onclick = () => { pos++; draw(); window.scrollTo({top:0}); };
+    });
+  };
+  draw();
+}
+
+/* ---------- printable export ---------- */
+function printableHTML(l){
+  const s = l.subject;
+  return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(s.short)} — ${esc(l.title)}</title>
+<style>
+@page{size:A4;margin:16mm 15mm}
+body{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif;color:#1d2030;line-height:1.5;font-size:11.5pt;max-width:780px;margin:0 auto;padding:20px}
+h1{font-size:22pt;margin:0 0 4px;line-height:1.2} .kick{color:${s.color};font-weight:700;font-size:10pt}
+.sub{color:#6a6f82;margin:0 0 18px}
+h2{font-size:15pt;margin:22px 0 8px;color:${s.ink};break-after:avoid}
+.box{border-radius:8px;padding:8px 12px;margin:8px 0;border-left:4px solid;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.box .tag{display:block;font-size:8.5pt;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.sut{background:#fdecef;border-color:#e0527a}.simple{background:#e7f6ea;border-color:#3f9e5c}.imp{background:#fff4d9;border-color:#e0a000}.fact{background:#eef3ff;border-color:#5b7fd6}
+.note{font-size:9.5pt;color:#6a6f82}
+table{border-collapse:collapse;width:100%;font-size:10pt;margin:8px 0;break-inside:avoid}
+th{background:${s.soft};color:${s.ink};text-align:left;padding:6px 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+td{padding:6px 8px;border-bottom:1px solid #e6e4ef;vertical-align:top}
+figure{text-align:center;margin:10px 0;break-inside:avoid} figcaption{font-size:9pt;color:#6a6f82}
+.rem{background:#fff7d6;border-radius:10px;padding:10px 16px;margin-top:18px;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cards{columns:2;column-gap:20px;font-size:10pt} .cards div{break-inside:avoid;margin:0 0 8px;padding:6px 8px;border:1px solid #e6e4ef;border-radius:6px}
+.bar{position:sticky;top:0;background:#fff;padding:10px 0 14px;display:flex;gap:10px;align-items:center}
+.bar button{font:inherit;font-weight:700;padding:10px 18px;border-radius:10px;border:0;background:${s.color};color:#fff;cursor:pointer}
+.bar span{color:#6a6f82;font-size:10pt}
+@media print{.bar{display:none}body{padding:0}}
+</style></head><body>
+<div class="bar"><button onclick="window.print()">🖨 Распечатать / сохранить PDF</button><span>или Ctrl+P · на телефоне: «Поделиться» → «Печать»</span></div>
+<div class="kick">${esc(s.name)} · лекция ${l.num}${l.date?' · '+l.date:''}</div>
+<h1>${esc(l.title)}</h1><p class="sub">${esc(l.sub)}</p>
+${l.sections.map((sec,i)=>`<h2>${i+1}. ${esc(sec.title)}</h2>${sec.blocks.map(b=>blockHTML(b).replace('class="tbl"','')).join('')}`).join('')}
+<div class="rem"><h2 style="margin-top:6px">📌 Что запомнить</h2><ul>${l.remember.map(r=>`<li>${r}</li>`).join('')}</ul></div>
+${(l.facts||[]).map(f=>blockHTML(['fact',f])).join('')}
+<h2>🃏 Вопросы для самопроверки</h2><div class="cards">${l.cards.map(c=>`<div><b>${c[0]}</b><br>${c[1]}</div>`).join('')}</div>
+</body></html>`;
+}
+function plainText(l){
+  let t = `${l.subject.name} · лекция ${l.num}\n${l.title}\n\n`;
+  l.sections.forEach((s,i)=>{ t += `${i+1}. ${s.title}\n`; s.blocks.forEach(b=>{
+    const pre = {sut:'Суть: ',simple:'Простыми словами: ',imp:'Важно: ',note:'',fact:'Интересно: '}[b[0]] ?? '';
+    if (b[0]==='ul'||b[0]==='ol') b[1].forEach((x,k)=>t+=`${b[0]==='ol'?(k+1)+'.':'•'} ${strip(x)}\n`);
+    else if (b[0]==='table') { t += b[1].join(' | ')+'\n'; b[2].forEach(r=>t+=r.join(' | ')+'\n'); }
+    else if (b[0]!=='svg') t += pre + strip(b[1]) + '\n';
+  }); t += '\n'; });
+  t += 'Что запомнить:\n' + l.remember.map(r=>'• '+strip(r)).join('\n');
+  return t;
+}
+let downloadsNS = null;
+try { if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloadsNS = d; }).catch(()=>{}); } catch(e){}
+async function getDownloads(){
+  if (downloadsNS || !window.claude) return downloadsNS;
+  try{ if (window.claude && window.claude.use){ downloadsNS = await Promise.race([window.claude.use('downloads'), new Promise(r=>setTimeout(()=>r(null),4000))]); } }catch(e){}
+  return downloadsNS;
+}
+async function doDownload(l){
+  await getDownloads();
+  const base = `${l.subject.short} — ${l.num}. ${l.title}`;
+  const pdfUrl = 'pdf/' + l.id + '.pdf';
+  if (downloadsNS){
+    let data = null, name = base + '.pdf';
+    try { const r = await fetch(pdfUrl); if (r.ok) data = await r.blob(); } catch(e){}
+    if (!data){ data = printableHTML(l); name = base + '.html'; }
+    try { await downloadsNS.save({ filename: name, data }); toast(name.endsWith('.pdf') ? 'PDF сохранён — можно печатать 🖨' : 'Файл сохранён. Открой его и нажми «Распечатать»'); return; }
+    catch(e){ if (e && (e.code==='declined' || e.code==='rate_limited')) return; }
+  }
+  if (!window.claude){ // обычный сайт
+    const a = document.createElement('a'); a.href = pdfUrl; a.download = base + '.pdf'; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove(); toast('Открываю PDF…'); return;
+  }
+  showPrintFallback(l);
+}
+function showPrintFallback(l){
+  openSheet(`<h3>Версия для печати</h3><p style="color:var(--muted);margin:0 0 10px">Скачивание здесь недоступно. Скопируй текст или открой приложение на компьютере и нажми Ctrl+P.</p>
+    <button class="primary" style="width:100%" data-act="copy" data-id="${l.id}">${'Копировать текст конспекта'}</button>`);
+}
+async function doCopy(l){
+  const t = plainText(l);
+  try { await navigator.clipboard.writeText(t); toast('Текст скопирован 👍'); }
+  catch(e){
+    openSheet(`<h3>Текст конспекта</h3><p style="color:var(--muted);margin:0 0 8px">Выдели и скопируй вручную:</p><textarea style="width:100%;height:50vh;font:inherit;font-size:14px;border-radius:12px;border:1px solid var(--line);padding:10px">${esc(t)}</textarea>`);
+  }
+}
+
+/* ---------- sheet ---------- */
+function openSheet(html){
+  closeSheet();
+  const sc = document.createElement('div'); sc.className='scrim'; sc.id='scrim';
+  sc.innerHTML = `<div class="sheet"><div class="grab"></div>${html}<button class="secondary" style="width:100%;margin-top:14px" data-act="close">Закрыть</button></div>`;
+  sc.addEventListener('click', e => { if (e.target===sc) closeSheet(); });
+  document.body.appendChild(sc);
+}
+function closeSheet(){ const s=$('#scrim'); if (s) s.remove(); }
+function installSheet(){
+  openSheet(`<h3>📲 Поставить на экран телефона</h3>
+    <p style="color:var(--muted);margin:0">Иконка появится рядом с другими приложениями.</p>
+    <div class="os"><b>iPhone (Safari)</b><ol><li>Открой эту страницу в <b>Safari</b>.</li><li>Нажми кнопку «Поделиться» <b>⬆︎</b> внизу экрана.</li><li>Выбери «<b>На экран „Домой“</b>» → «Добавить».</li></ol></div>
+    <div class="os"><b>Android (Chrome)</b><ol><li>Открой страницу в <b>Chrome</b>.</li><li>Нажми меню <b>⋮</b> справа вверху.</li><li>Выбери «<b>Добавить на главный экран</b>» или «Установить приложение».</li></ol></div>
+    <div class="os"><b>Компьютер</b><ol><li>Просто сохрани страницу в закладки.</li></ol></div>`);
+}
+
+/* ---------- routing ---------- */
+function route(){
+  closeSheet();
+  const h = (location.hash||'').slice(1);
+  let secIdx = null;
+  if (pendingSec!=null){ secIdx = pendingSec; pendingSec = null; }
+  if (h.startsWith('s-') && SUBJ[h.slice(2)]) viewSubject(SUBJ[h.slice(2)]);
+  else if (LEC[h] && !LEC[h].soon) viewLecture(LEC[h], secIdx);
+  else viewHome();
+  if (secIdx==null || secIdx<0) window.scrollTo(0,0);
+}
+let pendingSec = null;
+function go(h){
+  if (('#'+h)===location.hash || (!h && !location.hash)) route();
+  else location.hash = h;
+}
+window.addEventListener('hashchange', route);
+window.addEventListener('scroll', () => top.classList.toggle('scrolled', window.scrollY>4), {passive:true});
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-go],[data-tab],[data-act],[data-sec-jump]');
+  if (!t) return;
+  if (t.dataset.secJump!=null){
+    e.preventDefault(); const el = $('#sec-'+t.dataset.secJump); if (el) el.scrollIntoView({behavior:'smooth',block:'start'}); return;
+  }
+  if (t.dataset.go!=null){
+    const sec = t.dataset.sec;
+    if (sec!=null){ const n=+sec; lecTab = n===-2 ? 'cards' : 'notes'; pendingSec = n>=0?n:null; }
+    else if (LEC[t.dataset.go]) lecTab = 'notes';
+    go(t.dataset.go); return;
+  }
+  if (t.dataset.tab){
+    const l = LEC[(location.hash||'').slice(1)]; if (!l) return;
+    lecTab = t.dataset.tab; renderTab(l); window.scrollTo({top:0}); return;
+  }
+  const act = t.dataset.act, l = LEC[t.dataset.id] || LEC[(location.hash||'').slice(1)];
+  if (act==='install') installSheet();
+  else if (act==='close') closeSheet();
+  else if (act==='download' && l) doDownload(l);
+  else if (act==='copy' && l) doCopy(l);
+  else if (act==='cards-unknown') $('#pane')._redraw('unknown');
+  else if (act==='cards-all') $('#pane')._redraw();
+  else if (act==='cards-reset'){ const a=store.get('known',{}); delete a[l.id]; store.set('known',a); $('#pane')._redraw(); toast('Прогресс сброшен'); }
+  else if (act==='quiz-again') renderQuiz(l, $('#pane'));
+});
+
+window.__printable = id => printableHTML(LEC[id]);
+if (!window.claude && 'serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+route();
+})();
+
+</script>
+</body>
+</html>
