@@ -2,7 +2,7 @@
 # Запускается GitHub Actions каждые 5 минут (.github/workflows/homework-bot.yml).
 # В чате: «#дз микра выучить таблицу» или «/dz генетика задачи 1–5 на пятницу».
 # Команды: /dzstart — привязать бота к группе (один раз), /dzlist — всё ДЗ, /dzdel — ответом на сообщение с ДЗ, /dzhelp — помощь.
-import json, os, re, subprocess, sys, urllib.request, urllib.parse
+import json, os, re, subprocess, sys, time, urllib.request, urllib.parse
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 
@@ -26,8 +26,16 @@ def tg(method, **params):
         return {}
     data = urllib.parse.urlencode({k: (json.dumps(v) if isinstance(v, (list, dict)) else v) for k, v in params.items()}).encode()
     req = urllib.request.Request(f'https://api.telegram.org/bot{TOKEN}/{method}', data=data)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        res = json.load(r)
+    wait = int(params.get('timeout', 0)) + 20
+    for attempt in range(4):                      # Telegram иногда отвечает медленно — повторяем
+        try:
+            with urllib.request.urlopen(req, timeout=wait) as r:
+                res = json.load(r)
+            break
+        except Exception as e:
+            print(f'{method}: попытка {attempt + 1} не удалась: {e}')
+            if attempt == 3: raise
+            time.sleep(3 * (attempt + 1))
     if not res.get('ok'): raise RuntimeError(res)
     return res['result']
 
@@ -201,8 +209,20 @@ def git_push():
 
 if __name__ == '__main__':
     if not TOKEN: print('Нет TELEGRAM_BOT_TOKEN — добавь секрет в настройках репозитория. Пропускаю.'); sys.exit(0)
-    ups = tg('getUpdates', timeout=0, allowed_updates=['message', 'edited_message'])
-    print('новых сообщений:', len(ups))
-    if not ups: sys.exit(0)
-    if run(ups): git_push()
-    tg('getUpdates', offset=ups[-1]['update_id'] + 1, timeout=0, limit=1)   # подтверждаем обработанные — только после сохранения
+    # Слушаем чат несколько минут: пока запуск идёт, бот отвечает сразу.
+    # Сообщение подтверждается Telegram только следующим запросом — то есть уже после сохранения на GitHub.
+    end = time.time() + int(os.environ.get('BOT_LISTEN_SECONDS', '270'))
+    offset = None; total = 0
+    while time.time() < end:
+        try:
+            ups = tg('getUpdates', timeout=min(25, max(1, int(end - time.time()))), allowed_updates=['message', 'edited_message'], **({'offset': offset} if offset else {}))
+        except Exception as e:
+            print('getUpdates не удался, попробую в следующий раз:', e); break
+        if not ups: continue
+        total += len(ups)
+        if run(ups): git_push()
+        offset = ups[-1]['update_id'] + 1
+    if offset:
+        try: tg('getUpdates', offset=offset, timeout=0, limit=1)
+        except Exception as e: print('не смог подтвердить последние сообщения (обработаю повторно без дублей):', e)
+    print('обработано сообщений:', total)
