@@ -100,6 +100,11 @@ function setAccent(s){
   r.setProperty('--acc-soft', s ? s.soft : '#f0ecff');
   r.setProperty('--acc-ink', s ? s.ink : '#46309a');
 }
+/* шутки */
+const joke = k => { const a = (typeof JOKES !== 'undefined' && JOKES[k]) || ['']; return a[Math.floor(Math.random()*a.length)]; };
+let jokeIdx = -1;
+function nextHomeJoke(){ const a = JOKES.home; let i; do { i = Math.floor(Math.random()*a.length); } while (a.length > 1 && i === jokeIdx); jokeIdx = i; return a[i]; }
+
 /* дневной / ночной режим */
 function curTheme(){ return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'; }
 function themeBtn(){ const d = curTheme() === 'dark'; return `<button class="icon-btn theme-btn" data-act="theme" aria-label="${d ? 'Дневной режим' : 'Ночной режим'}" title="${d ? 'Дневной режим' : 'Ночной режим'}">${d ? '☀️' : '🌙'}</button>`; }
@@ -260,7 +265,7 @@ function renderQuick(){
     return;
   }
   const r = answerSearch(q, quickSubj);
-  if (!r.length){ box.innerHTML = `<div class="empty">Не нашёл 🤔<br>Попробуй другое слово или убери лишние</div>`; return; }
+  if (!r.length){ box.innerHTML = `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово или убери лишние</small></div>`; return; }
   const qs = qtoks(q);
   const hl = s => { let h = s; qs.forEach(t => { if (t.length < 3) return; h = h.replace(new RegExp('(^|[^а-яёa-z])(' + t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[а-яёa-z]*)', 'gi'), '$1<mark>$2</mark>'); }); return h; };
   const src = it => `${it.l.subject.emoji} ${esc(it.l.subject.short)} · ${esc(it.l.title)}`;
@@ -300,6 +305,7 @@ function viewHome(){
   app.innerHTML = `
     <div class="hero"><small>Группа С-201 · все предметы в одном месте</small>
       <h1>Учёба</h1><p>Конспекты простыми словами, карточки и тесты. Можно скачать и распечатать.</p></div>
+    <button class="joke" data-act="joke" aria-label="Другая шутка"><span class="jk-ic">😄</span><span class="jk-t">${esc(nextHomeJoke())}</span><span class="jk-dice">🎲</span></button>
     <button class="quick-btn" data-go="otvet"><span class="qi">⚡</span><div><b>Быстрый ответ</b><span>Для устного опроса: вбил вопрос — получил ответ</span></div><span class="chev">${I.chev}</span></button>
     <div class="search">${I.search}<input id="q" type="search" placeholder="Поиск по конспектам: «мейоз», «кодон»…" autocomplete="off"></div>
     <div id="results"></div>
@@ -357,7 +363,7 @@ function doSearch(raw){
   box.innerHTML = hits.length ? `<div class="section-label">Найдено: ${hits.length}</div>` + hits.slice(0,40).map(h=>`
     ${open(h)}
       <small style="color:${h.l.subject.color}">${h.l.subject.emoji} ${esc(h.l.subject.short)} · ${esc(h.l.title)}</small>
-      <b>${h.full ? fullLabel(h.full) : hl(h.title)}</b><span>${hl(h.text)}</span>${h.full && String(h.full.ref).includes('#') ? '</a>' : '</button>'}`).join('') : `<div class="empty">Ничего не нашлось 🤔<br>Попробуй другое слово</div>`;
+      <b>${h.full ? fullLabel(h.full) : hl(h.title)}</b><span>${hl(h.text)}</span>${h.full && String(h.full.ref).includes('#') ? '</a>' : '</button>'}`).join('') : `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово</small></div>`;
 }
 
 function viewSubject(s){
@@ -539,7 +545,7 @@ function renderCards(l, pane, mode){
   const draw = () => {
     if (pos >= order.length){
       pane.innerHTML = `<div class="done"><div class="big">${right===order.length?'🏆':'💪'}</div><h3>Круг пройден!</h3>
-        <p>Знаешь ${known.size} из ${l.cards.length} карточек</p>
+        <p>Знаешь ${known.size} из ${l.cards.length} карточек</p><p class="done-joke">${esc(joke('cards'))}</p>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         ${known.size<l.cards.length?`<button class="primary" data-act="cards-unknown">Повторить невыученные</button>`:''}
         <button class="secondary" data-act="cards-all">Все заново</button></div></div>`;
@@ -571,7 +577,7 @@ function renderQuiz(l, pane){
       const best = store.get('best',{}); if (best[l.id]==null || score>best[l.id]){ best[l.id]=score; store.set('best',best); }
       const pct = score/qs.length;
       pane.innerHTML = `<div class="done"><div class="big">${pct===1?'🏆':pct>=.6?'👍':'📚'}</div><h3>${score} из ${qs.length}</h3>
-        <p>${pct===1?'Идеально! Ты готов.':pct>=.6?'Хорошо! Пару тем стоит повторить.':'Повтори конспект и попробуй ещё раз.'}</p>
+        <p>${pct===1?'Идеально! Ты готов.':pct>=.6?'Хорошо! Пару тем стоит повторить.':'Повтори конспект и попробуй ещё раз.'}</p><p class="done-joke">${esc(joke(pct===1?'quizTop':pct>=.6?'quizMid':'quizLow'))}</p>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="primary" data-act="quiz-again">Пройти ещё раз</button><button class="secondary" data-tab="notes">К конспекту</button></div></div>`;
       return;
     }
@@ -748,6 +754,7 @@ document.addEventListener('click', e => {
     lecTab = t.dataset.tab; renderTab(l); window.scrollTo({top:0}); return;
   }
   const act = t.dataset.act, l = LEC[t.dataset.id] || LEC[(location.hash||'').slice(1)];
+  if (act==='joke'){ const el = t.querySelector('.jk-t'); t.classList.remove('jk-roll'); void t.offsetWidth; t.classList.add('jk-roll'); setTimeout(() => { el.textContent = nextHomeJoke(); }, 160); return; }
   if (act==='theme'){ const t = curTheme() === 'dark' ? 'light' : 'dark'; store.set('theme', t); applyTheme(t, true); toast(t === 'dark' ? '🌙 Ночной режим' : '☀️ Дневной режим'); return; }
   if (act==='install') installSheet();
   else if (act==='close') closeSheet();

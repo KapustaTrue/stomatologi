@@ -302,6 +302,17 @@ h1,h2,h3,.top-title,.subj h3,.quick-btn b,.lec b,.tab,.section-label,.qq,.done h
 .qbest{border-top-width:5px}
 .pg{border-radius:16px}
 .face{border-radius:26px}
+/* шутки */
+.joke{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:12px 0 0;padding:11px 12px 11px 14px;border-radius:18px;background:var(--card);border:1px dashed #c9bdf5;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-size:14px;line-height:1.4;color:var(--ink)}
+.joke .jk-ic{font-size:20px;flex:none}
+.joke .jk-t{flex:1;font-style:italic}
+.joke .jk-dice{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--card-solid);box-shadow:var(--shadow);font-size:17px}
+.joke.jk-roll .jk-dice{animation:dice .45s ease}
+.joke.jk-roll .jk-t{animation:jkfade .32s ease}
+@keyframes dice{50%{transform:rotate(200deg) scale(1.15)}100%{transform:rotate(360deg)}}
+@keyframes jkfade{50%{opacity:0;transform:translateY(4px)}}
+.done-joke{font-style:italic;color:var(--muted);font-size:14px;margin:-8px 0 16px!important}
+.empty small{display:block;margin-top:6px;font-size:13px;opacity:.8}
 
 /* ===== ночной режим ===== */
 html[data-theme=dark]{color-scheme:dark;--bg:#0b0d1a;--card:rgba(22,25,44,.78);--card-solid:#161a2e;--ink:#eceeff;--muted:#9aa0c4;--line:#272c4a;--glass:rgba(255,255,255,.06);
@@ -348,6 +359,7 @@ html[data-theme=dark] .toast{background:#2a2f52}
 html[data-theme=dark] .lec.soon{border-color:var(--line)}
 html[data-theme=dark] .link-btn{color:#c8bcff}
 html[data-theme=dark] .qopen{color:#c8bcff}
+html[data-theme=dark] .joke{border-color:#3b3570}
 .theme-btn{width:40px;padding:0;justify-content:center;font-size:18px}
 html.theme-anim *,html.theme-anim *::before{transition:background-color .35s,color .35s,border-color .35s!important}
 
@@ -1627,6 +1639,78 @@ const ORAL = {
 
 const FULL = {"gen-1": {"pages": 21, "dir": "full/gen-1", "pdf": "pdf/full/gen-1.pdf", "note": "Полный конспект лекций 1–2 с иллюстрациями (разделы 0–7 + шпаргалка).", "sizes": [[994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405]]}, "gen-2": {"pages": 15, "dir": "full/gen-2", "pdf": "pdf/full/gen-2.pdf", "note": "Полный конспект с иллюстрациями (разделы 8–13).", "extra": {"title": "Дополнительно: репликация ДНК подробно", "pages": 8, "dir": "full/gen-2-replication", "pdf": "pdf/full/gen-2-replication.pdf", "sizes": [[994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405]]}, "sizes": [[994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405], [994, 1405]]}, "gen-3": {"pages": 11, "dir": "full/gen-3", "pdf": "pdf/full/gen-3.pdf", "sizes": [[992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404]]}, "gen-4": {"pages": 10, "dir": "full/gen-4", "pdf": "pdf/full/gen-4.pdf", "sizes": [[992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404]]}, "imm-1": {"pages": 12, "dir": "full/imm-1", "pdf": "pdf/full/imm-1.pdf", "sizes": [[992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404]]}, "anat-1": {"html": "full/anat-1.html", "pdf": "pdf/full/anat-1.pdf", "note": "Интерактивный атлас: 30+ схем, на каждой можно скрыть подписи и проверить себя."}, "anat-2": {"pages": 16, "dir": "full/anat-2", "pdf": "pdf/full/anat-2.pdf", "sizes": [[992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404], [992, 1404]]}};
 
+// Шутки про учёбу: фраза дня на главной, реплики после теста и карточек, пустой поиск
+const JOKES = {
+home: [
+  'Сессия — это когда ДНК ещё реплицируется, а ты уже нет.',
+  'Зубы мудрости режутся в 17–25 лет. Мудрость к сессии — не всегда.',
+  'Митоз: из одной клетки две. Сессия: из одного студента — половинка.',
+  'Кофе — это не зависимость, а клеточное дыхание с ароматом.',
+  'Сплайсинг — вырезать лишнее и склеить главное. Как подготовка к зачёту в ночь перед ним.',
+  'Эмаль не восстанавливается. Нервы перед экзаменом — тоже.',
+  '206 костей и ни одной свободной минуты. Добро пожаловать в анатомию.',
+  'Мой мозг в 3 ночи — фрагменты Оказаки: кусочками и с пропусками.',
+  'Рецессивный ген лени проявляется только у aa. Похоже, у меня как раз aa.',
+  'Вакцина от прокрастинации пока в разработке. Как и я.',
+  'Стоматолог — единственный врач, которому отвечают с открытым ртом.',
+  'Теломеры укорачиваются с каждым делением. Мои нервы — с каждой парой.',
+  'Самая прочная связка в теле — подвздошно-бедренная. Вторая — между студентом и кроватью.',
+  'Будильник прозвенел. Коленный рефлекс есть, желания вставать — нет.',
+  'Хеликаза расплетает ДНК, а я — наушники перед парой.',
+  'Холодовая цепь: +2…+8 °C. Моя мотивация хранится там же.',
+  'Транскрипция — снять копию с оригинала. Конспект одногруппника тоже считается.',
+  'Полимераза ошибается раз на миллиард нуклеотидов. Я — раз на абзац.',
+  'Кариес начинается незаметно. Как и долги по учёбе.',
+  'Метафаза: все хромосомы на экваторе. Пара: все студенты на задней парте.',
+  'Две хроматиды — точные копии друг друга. Как мой тест и тест соседа.',
+  'Анатомическая табакерка есть у каждого. Свободное время — не у каждого.',
+  'Пульпит болит постоянно и стреляет. Совсем как дедлайн.',
+  'В ДНК всего 4 буквы, а выучить всё равно не получается.',
+  'Фаза G0 — клетка отдыхает и не делится. Я в ней живу.',
+  'Ожидание: лечить людям зубы. Реальность: учить, как делится хромосома.',
+  'Видишь улыбку — сразу считаешь: 2 · 1 · 2 · 3. Профдеформация началась.',
+  'Пассивный иммунитет — когда ответ подсказали. Ненадолго, но спасает.',
+  'Активный иммунитет — когда выучил сам. Долго, зато надолго.',
+  'Не знаешь ответ — говори «зависит от генотипа и условий среды». Почти всегда правда.',
+  'Нагрузка на моляр при жевании — 50 кг. На мозг перед сессией — больше.',
+  'Молочных зубов 20, постоянных 32, нервных клеток после сессии — не считали.',
+  'Пока ты это читаешь, у тебя обновилось немного костной ткани. Знания — нет, открывай конспект.',
+  'Генетический код универсален для всего живого. Кроме расписания пар.',
+  'Стоп-кодоны: УАА, УАГ, УГА. Стоп-слово студента: «на сегодня всё».',
+  'Мейоз уменьшает набор хромосом вдвое. Сессия — набор сил.',
+  'Ревакцинация нужна, чтобы иммунитет не забыл. Повторение — чтобы ты не забыл.',
+  'Синтез белка требует много АТФ. Синтез конспекта — много кофе.',
+  'Шина фиксирует два соседних сустава. Сессия фиксирует тебя за столом целиком.',
+  'Анатомический факт: шея поворачивается сама, когда сосед открывает правильный ответ.',
+],
+quizTop: [
+  'Полимераза завидует твоей точности.',
+  'Ошибок ноль — корректура не понадобилась.',
+  'Преподаватель ещё не знает, но уже ставит пять.',
+  'Клетки памяти работают на полную. Так держать!',
+],
+quizMid: [
+  'Пара мутаций есть, но белок рабочий.',
+  'Почти! Вырожденность кода тебя подстраховала.',
+  'Неплохо. Осталось чуть-чуть — как до конца пары.',
+],
+quizLow: [
+  'Сдвиг рамки считывания. Перечитай конспект — всё встанет на место.',
+  'Иммунитет ещё не выработался. Нужна ревакцинация конспектом.',
+  'Это была разведка. Теперь — в бой с конспектом.',
+],
+cards: [
+  'Карточки закончились, знания остались. Наверное.',
+  'Клетки памяти всё записали.',
+  'Повторение — мать учения. Ревакцинация — тоже.',
+],
+empty: [
+  'Ничего не нашёл. Возможно, этого не было на лекции. Или ты на ней спал.',
+  'Пусто, как в аудитории в 8 утра.',
+  'Такого нет даже в полной версии. Видимо, этого правда не задавали.',
+],
+};
+
 const FT_VER = '50d8c987';
 </script>
 <script>
@@ -1732,6 +1816,11 @@ function setAccent(s){
   r.setProperty('--acc-soft', s ? s.soft : '#f0ecff');
   r.setProperty('--acc-ink', s ? s.ink : '#46309a');
 }
+/* шутки */
+const joke = k => { const a = (typeof JOKES !== 'undefined' && JOKES[k]) || ['']; return a[Math.floor(Math.random()*a.length)]; };
+let jokeIdx = -1;
+function nextHomeJoke(){ const a = JOKES.home; let i; do { i = Math.floor(Math.random()*a.length); } while (a.length > 1 && i === jokeIdx); jokeIdx = i; return a[i]; }
+
 /* дневной / ночной режим */
 function curTheme(){ return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'; }
 function themeBtn(){ const d = curTheme() === 'dark'; return `<button class="icon-btn theme-btn" data-act="theme" aria-label="${d ? 'Дневной режим' : 'Ночной режим'}" title="${d ? 'Дневной режим' : 'Ночной режим'}">${d ? '☀️' : '🌙'}</button>`; }
@@ -1892,7 +1981,7 @@ function renderQuick(){
     return;
   }
   const r = answerSearch(q, quickSubj);
-  if (!r.length){ box.innerHTML = `<div class="empty">Не нашёл 🤔<br>Попробуй другое слово или убери лишние</div>`; return; }
+  if (!r.length){ box.innerHTML = `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово или убери лишние</small></div>`; return; }
   const qs = qtoks(q);
   const hl = s => { let h = s; qs.forEach(t => { if (t.length < 3) return; h = h.replace(new RegExp('(^|[^а-яёa-z])(' + t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[а-яёa-z]*)', 'gi'), '$1<mark>$2</mark>'); }); return h; };
   const src = it => `${it.l.subject.emoji} ${esc(it.l.subject.short)} · ${esc(it.l.title)}`;
@@ -1932,6 +2021,7 @@ function viewHome(){
   app.innerHTML = `
     <div class="hero"><small>Группа С-201 · все предметы в одном месте</small>
       <h1>Учёба</h1><p>Конспекты простыми словами, карточки и тесты. Можно скачать и распечатать.</p></div>
+    <button class="joke" data-act="joke" aria-label="Другая шутка"><span class="jk-ic">😄</span><span class="jk-t">${esc(nextHomeJoke())}</span><span class="jk-dice">🎲</span></button>
     <button class="quick-btn" data-go="otvet"><span class="qi">⚡</span><div><b>Быстрый ответ</b><span>Для устного опроса: вбил вопрос — получил ответ</span></div><span class="chev">${I.chev}</span></button>
     <div class="search">${I.search}<input id="q" type="search" placeholder="Поиск по конспектам: «мейоз», «кодон»…" autocomplete="off"></div>
     <div id="results"></div>
@@ -1989,7 +2079,7 @@ function doSearch(raw){
   box.innerHTML = hits.length ? `<div class="section-label">Найдено: ${hits.length}</div>` + hits.slice(0,40).map(h=>`
     ${open(h)}
       <small style="color:${h.l.subject.color}">${h.l.subject.emoji} ${esc(h.l.subject.short)} · ${esc(h.l.title)}</small>
-      <b>${h.full ? fullLabel(h.full) : hl(h.title)}</b><span>${hl(h.text)}</span>${h.full && String(h.full.ref).includes('#') ? '</a>' : '</button>'}`).join('') : `<div class="empty">Ничего не нашлось 🤔<br>Попробуй другое слово</div>`;
+      <b>${h.full ? fullLabel(h.full) : hl(h.title)}</b><span>${hl(h.text)}</span>${h.full && String(h.full.ref).includes('#') ? '</a>' : '</button>'}`).join('') : `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово</small></div>`;
 }
 
 function viewSubject(s){
@@ -2171,7 +2261,7 @@ function renderCards(l, pane, mode){
   const draw = () => {
     if (pos >= order.length){
       pane.innerHTML = `<div class="done"><div class="big">${right===order.length?'🏆':'💪'}</div><h3>Круг пройден!</h3>
-        <p>Знаешь ${known.size} из ${l.cards.length} карточек</p>
+        <p>Знаешь ${known.size} из ${l.cards.length} карточек</p><p class="done-joke">${esc(joke('cards'))}</p>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         ${known.size<l.cards.length?`<button class="primary" data-act="cards-unknown">Повторить невыученные</button>`:''}
         <button class="secondary" data-act="cards-all">Все заново</button></div></div>`;
@@ -2203,7 +2293,7 @@ function renderQuiz(l, pane){
       const best = store.get('best',{}); if (best[l.id]==null || score>best[l.id]){ best[l.id]=score; store.set('best',best); }
       const pct = score/qs.length;
       pane.innerHTML = `<div class="done"><div class="big">${pct===1?'🏆':pct>=.6?'👍':'📚'}</div><h3>${score} из ${qs.length}</h3>
-        <p>${pct===1?'Идеально! Ты готов.':pct>=.6?'Хорошо! Пару тем стоит повторить.':'Повтори конспект и попробуй ещё раз.'}</p>
+        <p>${pct===1?'Идеально! Ты готов.':pct>=.6?'Хорошо! Пару тем стоит повторить.':'Повтори конспект и попробуй ещё раз.'}</p><p class="done-joke">${esc(joke(pct===1?'quizTop':pct>=.6?'quizMid':'quizLow'))}</p>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="primary" data-act="quiz-again">Пройти ещё раз</button><button class="secondary" data-tab="notes">К конспекту</button></div></div>`;
       return;
     }
@@ -2380,6 +2470,7 @@ document.addEventListener('click', e => {
     lecTab = t.dataset.tab; renderTab(l); window.scrollTo({top:0}); return;
   }
   const act = t.dataset.act, l = LEC[t.dataset.id] || LEC[(location.hash||'').slice(1)];
+  if (act==='joke'){ const el = t.querySelector('.jk-t'); t.classList.remove('jk-roll'); void t.offsetWidth; t.classList.add('jk-roll'); setTimeout(() => { el.textContent = nextHomeJoke(); }, 160); return; }
   if (act==='theme'){ const t = curTheme() === 'dark' ? 'light' : 'dark'; store.set('theme', t); applyTheme(t, true); toast(t === 'dark' ? '🌙 Ночной режим' : '☀️ Дневной режим'); return; }
   if (act==='install') installSheet();
   else if (act==='close') closeSheet();

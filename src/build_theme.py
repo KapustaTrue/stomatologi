@@ -63,6 +63,17 @@ h1,h2,h3,.top-title,.subj h3,.quick-btn b,.lec b,.tab,.section-label,.qq,.done h
 .qbest{border-top-width:5px}
 .pg{border-radius:16px}
 .face{border-radius:26px}
+/* шутки */
+.joke{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:12px 0 0;padding:11px 12px 11px 14px;border-radius:18px;background:var(--card);border:1px dashed #c9bdf5;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-size:14px;line-height:1.4;color:var(--ink)}
+.joke .jk-ic{font-size:20px;flex:none}
+.joke .jk-t{flex:1;font-style:italic}
+.joke .jk-dice{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--card-solid);box-shadow:var(--shadow);font-size:17px}
+.joke.jk-roll .jk-dice{animation:dice .45s ease}
+.joke.jk-roll .jk-t{animation:jkfade .32s ease}
+@keyframes dice{50%{transform:rotate(200deg) scale(1.15)}100%{transform:rotate(360deg)}}
+@keyframes jkfade{50%{opacity:0;transform:translateY(4px)}}
+.done-joke{font-style:italic;color:var(--muted);font-size:14px;margin:-8px 0 16px!important}
+.empty small{display:block;margin-top:6px;font-size:13px;opacity:.8}
 """
 
 DARK = """
@@ -103,6 +114,7 @@ mark{background:#7a5f00;color:#fff}
 .lec.soon{border-color:var(--line)}
 .link-btn{color:#c8bcff}
 .qopen{color:#c8bcff}
+.joke{border-color:#3b3570}
 """
 
 def scope(block, P):
