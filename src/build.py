@@ -7,7 +7,7 @@ data = "\n".join(r(f) for f in ['data_gen.js', 'data_other.js', 'data_oral.js', 
 head = '''<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-title" content="Учёба С-201">
+<meta name="apple-mobile-web-app-title" content="Зубрёжка">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="description" content="Конспекты, карточки и тесты группы С-201">'''
 import hashlib
