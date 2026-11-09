@@ -3,7 +3,7 @@ import os
 here = os.path.dirname(os.path.abspath(__file__)); root = os.path.dirname(here)
 r = lambda f: open(os.path.join(here, f), encoding='utf-8').read()
 t = r('app.html')
-data = "\n".join(r(f) for f in ['data_gen.js', 'data_other.js', 'data_oral.js', 'data_full.js', 'data_jokes.js'])
+data = "\n".join(r(f) for f in ['data_gen.js', 'data_other.js', 'data_oral.js', 'data_full.js', 'data_jokes.js', 'data_schedule.js'])
 head = '''<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">

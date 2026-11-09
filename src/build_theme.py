@@ -74,6 +74,47 @@ h1,h2,h3,.top-title,.subj h3,.quick-btn b,.lec b,.tab,.section-label,.qq,.done h
 @keyframes jkfade{50%{opacity:0;transform:translateY(4px)}}
 .done-joke{font-style:italic;color:var(--muted);font-size:14px;margin:-8px 0 16px!important}
 .empty small{display:block;margin-top:6px;font-size:13px;opacity:.8}
+
+/* расписание */
+.sched-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin-top:12px;padding:15px 16px;border-radius:24px;color:#fff;background:linear-gradient(120deg,#13b5c9,#2f6fd6 55%,#6b4cff);box-shadow:0 16px 30px -16px rgba(47,111,214,.8);position:relative;overflow:hidden}
+.sched-btn::before{content:"";position:absolute;right:-26px;top:-34px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.13)}
+.sched-btn .sb-ic{width:46px;height:46px;border-radius:15px;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:24px;flex:none}
+.sched-btn .sb-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sched-btn b{font-family:"Unbounded",sans-serif;font-size:16px;font-weight:700}
+.sched-btn .sb-txt>span{font-size:13px;opacity:.92;line-height:1.35}
+.sched-btn .live{font-family:inherit;font-size:13px;color:#b6ffcf;animation:blink 1.6s infinite}
+.sched-btn svg{flex:none;opacity:.85}
+@keyframes blink{50%{opacity:.45}}
+.sch-head h1{font-size:28px;margin:10px 0 4px}.sch-head p{color:var(--muted);margin:0 0 14px}
+.sch-warn{background:#fff3c4;border-radius:14px;padding:10px 14px;font-size:14px;margin-bottom:12px}
+.sch-tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;position:sticky;top:calc(56px + env(safe-area-inset-top));z-index:5;padding:6px 0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.sch-tab{display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 0 6px;border-radius:16px;background:var(--card);border:1px solid var(--glass);box-shadow:var(--shadow)}
+.sch-tab b{font-family:"Unbounded",sans-serif;font-size:12px}
+.sch-tab span{font-size:18px;font-weight:700}
+.sch-tab i{font-style:normal;font-size:10px;letter-spacing:1px;color:var(--muted);height:12px;line-height:12px}
+.sch-tab.today{border:2px solid #2f6fd6}
+.sch-tab.on{background:linear-gradient(135deg,#2f6fd6,#6b4cff);color:#fff;border-color:transparent}
+.sch-tab.on i{color:rgba(255,255,255,.8)}
+.sch-dayhead{display:flex;align-items:baseline;justify-content:space-between;margin:16px 2px 10px}
+.sch-dayhead h2{font-size:20px;margin:0}.sch-dayhead span{color:var(--muted);font-size:14px}
+.sch-pair{display:flex;gap:12px;width:100%;text-align:left;padding:14px;margin-bottom:10px;border-radius:20px;background:var(--card);border:1px solid var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:var(--shadow);border-left:5px solid var(--c);color:var(--ink)}
+.sch-pair.past{opacity:.5}
+.sch-pair.live{box-shadow:0 0 0 2px var(--c),0 18px 30px -16px var(--c)}
+.sch-time{flex:none;width:56px;display:flex;flex-direction:column;align-items:flex-start}
+.sch-time b{font-family:"Unbounded",sans-serif;font-size:15px}
+.sch-time span{color:var(--muted);font-size:13px}
+.sch-time i{font-style:normal;font-size:11px;margin-top:6px;padding:2px 7px;border-radius:8px;background:var(--cs);color:var(--ci);font-weight:700}
+.sch-body{flex:1;min-width:0}
+.sch-name{font-weight:700;font-size:16px;display:flex;gap:7px;align-items:center;line-height:1.25}
+.sch-em{font-size:18px}
+.sch-meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:7px;font-size:13px;color:var(--muted)}
+.sch-room{background:var(--cs);color:var(--ci);font-weight:700;padding:2px 9px;border-radius:9px}
+.sch-live{margin-top:9px;font-size:12.5px;font-weight:700;color:var(--c)}
+.sch-prog{height:6px;border-radius:4px;background:var(--cs);margin-top:5px;overflow:hidden}
+.sch-prog i{display:block;height:100%;background:var(--c);border-radius:4px}
+.sch-gap{text-align:center;color:var(--muted);font-size:13px;margin:-2px 0 10px;padding:6px;border:1px dashed var(--line);border-radius:14px}
+.sch-free{text-align:center;padding:30px 16px;border-radius:22px;background:var(--card);border:1px solid var(--glass)}
+.sch-free .big{font-size:44px}.sch-free p{color:var(--muted);margin:6px 0 0}
 """
 
 DARK = """
@@ -115,6 +156,11 @@ mark{background:#7a5f00;color:#fff}
 .link-btn{color:#c8bcff}
 .qopen{color:#c8bcff}
 .joke{border-color:#3b3570}
+.sch-time i,.sch-room{background:color-mix(in srgb,var(--c) 26%,#161a2e);color:#fff}
+.sch-prog{background:color-mix(in srgb,var(--c) 20%,#161a2e)}
+.sch-live{color:color-mix(in srgb,var(--c) 55%,#fff)}
+.sch-warn{background:#2b2412;color:#ffe3a3}
+.sch-tab.today{border-color:#7ea2ff}
 """
 
 def scope(block, P):
