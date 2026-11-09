@@ -7,3 +7,5 @@
 - Сборка: `python3 src/build.py` → `index.html`. После изменений поднять версию кэша в `sw.js` (s201-vN).
 - Краткие PDF (`pdf/<id>.pdf`) печатаются headless Chrome из `window.__printable(id)`.
 - Полные страницы: `pdftoppm -r 120 -png` → WebP 1100px, q74.
+- Поиск по полным версиям: `python3 src/build_fulltext.py` (нужен pdftotext) → `fulltext.json`; затем `python3 src/build.py` (вшивает версию файла). Запускать после добавления или замены полной версии.
+- Правило: краткий конспект охватывает все темы полной версии, включая «доп.» разделы.

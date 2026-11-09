@@ -135,6 +135,33 @@ function qtoks(s){
   return [...new Set(out)];
 }
 let QIDX = null;
+/* текст полных версий (fulltext.json) — подгружается отдельно и кэшируется для офлайна */
+let FT = null, ftLoading = false;
+function loadFT(){
+  if (FT || ftLoading) return; ftLoading = true;
+  fetch('fulltext.json?v=' + (typeof FT_VER !== 'undefined' ? FT_VER : '0'))
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if (!d || !d.items) return; FT = d.items; QIDX = null;
+      if ($('#qres') && quickQ.trim().length >= 2) renderQuick();
+      if ($('#results') && sessionQ.trim().length >= 2) doSearch(sessionQ); })
+    .catch(() => {}).finally(() => { ftLoading = false; });
+}
+function fullLabel(it){
+  const F = FULL[it.l.id], ex = F && F.extra && F.extra.dir === it.ref;
+  return '📄 ' + (ex ? esc(F.extra.title) : 'Полная версия') + (it.pg ? ' · стр. ' + it.pg : '') + (it.q ? ' · ' + esc(it.q) : '');
+}
+function fullBtn(it, cls){
+  if (String(it.ref).includes('#')) return `<a class="${cls}" href="${it.ref}">Открыть в атласе →</a>`;
+  return `<button class="${cls}" data-full="${it.l.id}|${it.ref}|${it.pg}">Открыть страницу ${it.pg} полной версии →</button>`;
+}
+let pendingViewer = null;
+function openFullAt(lid, dir, pg){
+  const F = FULL[lid], l = LEC[lid]; if (!F || !l) return;
+  const ex = F.extra && F.extra.dir === dir;
+  noteMode = 'full'; store.set('noteMode', 'full'); lecTab = 'notes';
+  pendingViewer = [dir, ex ? F.extra.pages : F.pages, +pg, ex ? F.extra.title : l.title];
+  go(hashId(lid));
+}
 function buildIndex(){
   const items = [];
   Object.values(LEC).forEach(l => {
@@ -147,6 +174,10 @@ function buildIndex(){
       const body = s.blocks.filter(b=>['p','ul','ol','table','imp'].includes(b[0])).map(blockText).join(' ');
       items.push({ l, kind:'sec', si, q: s.title, a: sut, more: body, kw:'', w:.9 });
     });
+  });
+  (FT||[]).forEach(([lid, ref, pg, h, t]) => {
+    const l = LEC[lid]; if (!l || l.soon) return;
+    items.push({ l, kind:'full', ref, pg, q: h || '', a: t, kw:'', w:.7 });
   });
   items.forEach(it => {
     it.qt = toks(it.q + ' ' + it.kw).filter(t=>!STOP.has(t)).map(stem);
@@ -191,6 +222,7 @@ function answerSearch(query, subj){
 let quickSubj = '', quickQ = '';
 function viewQuick(){
   setAccent(null);
+  loadFT();
   topBar('⚡ Быстрый ответ', '');
   app.innerHTML = `
     <div class="quick-head"><h1>⚡ Быстрый ответ</h1><p>Вбей вопрос или пару ключевых слов — ответ появится сразу.</p></div>
@@ -210,6 +242,7 @@ function renderQuick(){
       <li>Пиши как в вопросе: «виды вакцин», «фазы митоза», «признаки перелома».</li>
       <li>Можно просто слово: «кроссинговер», «АКДС», «кодон».</li>
       <li>На телефоне удобно надиктовать: значок 🎤 на клавиатуре.</li>
+      <li>Ищет и по кратким конспектам, и по полным версиям лекций.</li>
       <li>Работает без интернета.</li></ul></div>`;
     return;
   }
@@ -218,21 +251,30 @@ function renderQuick(){
   const qs = qtoks(q);
   const hl = s => { let h = s; qs.forEach(t => { if (t.length < 3) return; h = h.replace(new RegExp('(^|[^а-яёa-z])(' + t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[а-яёa-z]*)', 'gi'), '$1<mark>$2</mark>'); }); return h; };
   const src = it => `${it.l.subject.emoji} ${esc(it.l.subject.short)} · ${esc(it.l.title)}`;
+  const ans = it => {
+    if (it.kind !== 'full') return hl(it.a);
+    const t = it.a, low = t.toLowerCase().replace(/ё/g,'е'); let pos = -1;
+    qs.forEach(w => { if (w.length < 3) return; const i = low.indexOf(w); if (i >= 0 && (pos < 0 || i < pos)) pos = i; });
+    const from = Math.max(0, pos - 140), cut = t.slice(from, from + 460);
+    return hl(esc((from ? '…' : '') + cut + (from + 460 < t.length ? '…' : '')));
+  };
+  const ttl = it => it.kind === 'full' ? fullLabel(it) : hl(esc(it.q));
+  const btn = it => it.kind === 'full' ? fullBtn(it, 'qopen') : `<button class="qopen" data-go="${go(it)}" ${it.si!=null?`data-sec="${it.si}"`:''}>Открыть в конспекте →</button>`;
   const go = it => hashId(it.l.id);
   const [top, ...rest] = r;
   const t = top.it;
   box.innerHTML = `
     <div class="qbest" style="--c:${t.l.subject.color}">
       <div class="qsrc">${src(t)}</div>
-      <div class="qq">${hl(esc(t.q))}</div>
-      <div class="qa">${hl(t.a)}</div>
+      <div class="qq">${ttl(t)}</div>
+      <div class="qa">${ans(t)}</div>
       ${t.kind==='sec' && t.more ? `<details class="qmore"><summary>Подробнее</summary><div>${hl(esc(t.more))}</div></details>` : ''}
-      <button class="qopen" data-go="${go(t)}" ${t.si!=null?`data-sec="${t.si}"`:''}>Открыть в конспекте →</button>
+      ${btn(t)}
     </div>
     ${rest.length ? `<div class="section-label">Похожие ответы</div>` + rest.map(({it}) => `
-      <details class="qalt"><summary><small>${src(it)}</small><b>${hl(esc(it.q))}</b></summary>
-        <div class="qa">${hl(it.a)}</div>
-        <button class="qopen" data-go="${go(it)}" ${it.si!=null?`data-sec="${it.si}"`:''}>Открыть в конспекте →</button></details>`).join('') : ''}`;
+      <details class="qalt"><summary><small>${src(it)}</small><b>${ttl(it)}</b></summary>
+        <div class="qa">${ans(it)}</div>
+        ${btn(it)}</details>`).join('') : ''}`;
 }
 
 /* ---------- views ---------- */
@@ -265,7 +307,7 @@ function viewHome(){
       <div class="foot">Материалы обновляются · одна ссылка для всей группы</div>
     </div>`;
   const q = $('#q');
-  q.addEventListener('input', () => doSearch(q.value));
+  q.addEventListener('input', () => { loadFT(); doSearch(q.value); });
   if (sessionQ) { q.value = sessionQ; doSearch(sessionQ); }
 }
 let sessionQ = '';
@@ -289,12 +331,20 @@ function doSearch(raw){
     });
     (l.cards||[]).forEach(c => { const t=(c[0]+' — '+c[1]); if (t.toLowerCase().includes(q)) hits.push({l, si:-2, title:'Карточка: '+c[0], text:c[1], score:1}); });
   });
+  (FT||[]).forEach(([lid, ref, pg, h, t]) => {
+    const l = LEC[lid]; if (!l || l.soon) return;
+    const idx = t.toLowerCase().indexOf(q); if (idx < 0) return;
+    const from = Math.max(0, idx-50);
+    hits.push({l, full:{l, ref, pg, q:h}, title:'', text:(from?'…':'')+t.slice(from, idx+q.length+80)+'…', score:.5});
+  });
   hits.sort((a,b)=>b.score-a.score);
   const hl = s => esc(s).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m=>`<mark>${m}</mark>`);
+  const open = h => !h.full ? `<button class="res" data-go="${hashId(h.l.id)}" data-sec="${h.si}">`
+    : String(h.full.ref).includes('#') ? `<a class="res" href="${h.full.ref}">` : `<button class="res" data-full="${h.l.id}|${h.full.ref}|${h.full.pg}">`;
   box.innerHTML = hits.length ? `<div class="section-label">Найдено: ${hits.length}</div>` + hits.slice(0,40).map(h=>`
-    <button class="res" data-go="${hashId(h.l.id)}" data-sec="${h.si}">
+    ${open(h)}
       <small style="color:${h.l.subject.color}">${h.l.subject.emoji} ${esc(h.l.subject.short)} · ${esc(h.l.title)}</small>
-      <b>${hl(h.title)}</b><span>${hl(h.text)}</span></button>`).join('') : `<div class="empty">Ничего не нашлось 🤔<br>Попробуй другое слово</div>`;
+      <b>${h.full ? fullLabel(h.full) : hl(h.title)}</b><span>${hl(h.text)}</span>${h.full && String(h.full.ref).includes('#') ? '</a>' : '</button>'}`).join('') : `<div class="empty">Ничего не нашлось 🤔<br>Попробуй другое слово</div>`;
 }
 
 function viewSubject(s){
@@ -638,6 +688,7 @@ function route(){
   else if (LEC[h] && !LEC[h].soon) viewLecture(LEC[h], secIdx);
   else viewHome();
   if (secIdx==null || secIdx<0) window.scrollTo(0,0);
+  if (pendingViewer){ const v = pendingViewer; pendingViewer = null; if (LEC[h] && FULL[h]) openViewer(...v); }
 }
 let pendingSec = null;
 function go(h){
@@ -661,6 +712,8 @@ document.addEventListener('click', e => {
     return; }
   const pg = e.target.closest('a.pg[data-vdir]');
   if (pg){ e.preventDefault(); openViewer(pg.dataset.vdir, pg.dataset.vn, pg.dataset.vi, pg.dataset.vt); return; }
+  const fb = e.target.closest('[data-full]');
+  if (fb){ const [lid, dir, pg] = fb.dataset.full.split('|'); openFullAt(lid, dir, pg); return; }
   if (e.target.closest('[data-act="totop"]')){ window.scrollTo({top:0, behavior:'smooth'}); return; }
   const md = e.target.closest('[data-mode]');
   if (md){ noteMode = md.dataset.mode; store.set('noteMode', noteMode); const l = LEC[(location.hash||'').slice(1)]; if (l) renderNotes(l, $('#pane')); return; }
@@ -705,4 +758,5 @@ if (!window.claude && 'serviceWorker' in navigator && location.protocol==='https
   }).catch(()=>{});
 }
 route();
+setTimeout(loadFT, 2500);
 })();

@@ -10,6 +10,9 @@ head = '''<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Учёба С-201">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="description" content="Конспекты, карточки и тесты группы С-201">'''
-t = t.replace('/*DATA*/', data).replace('/*APP*/', r('app.js')).replace('<!--SITEHEAD-->', head)
+import hashlib
+ft = os.path.join(root, 'fulltext.json')
+ftver = hashlib.md5(open(ft, 'rb').read()).hexdigest()[:8] if os.path.exists(ft) else '0'
+t = t.replace('/*DATA*/', data + "\nconst FT_VER = '" + ftver + "';").replace('/*APP*/', r('app.js')).replace('<!--SITEHEAD-->', head)
 open(os.path.join(root, 'index.html'), 'w', encoding='utf-8').write(t)
 print('index.html собран')
