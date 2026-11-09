@@ -13,6 +13,6 @@ head = '''<link rel="manifest" href="manifest.webmanifest">
 import hashlib
 ft = os.path.join(root, 'fulltext.json')
 ftver = hashlib.md5(open(ft, 'rb').read()).hexdigest()[:8] if os.path.exists(ft) else '0'
-t = t.replace('/*DATA*/', data + "\nconst FT_VER = '" + ftver + "';").replace('/*APP*/', r('app.js')).replace('<!--SITEHEAD-->', head)
+t = t.replace('/*DATA*/', data + "\nconst FT_VER = '" + ftver + "';").replace('/*APP*/', r('app.js')).replace('<!--SITEHEAD-->', head).replace('</style>', (r('theme.css') if os.path.exists(os.path.join(here, 'theme.css')) else '') + '\n</style>', 1)
 open(os.path.join(root, 'index.html'), 'w', encoding='utf-8').write(t)
 print('index.html собран')

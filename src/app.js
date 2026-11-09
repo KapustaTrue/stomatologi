@@ -100,7 +100,20 @@ function setAccent(s){
   r.setProperty('--acc-soft', s ? s.soft : '#f0ecff');
   r.setProperty('--acc-ink', s ? s.ink : '#46309a');
 }
+/* дневной / ночной режим */
+function curTheme(){ return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'; }
+function themeBtn(){ const d = curTheme() === 'dark'; return `<button class="icon-btn theme-btn" data-act="theme" aria-label="${d ? 'Дневной режим' : 'Ночной режим'}" title="${d ? 'Дневной режим' : 'Ночной режим'}">${d ? '☀️' : '🌙'}</button>`; }
+function applyTheme(t, animate){
+  const h = document.documentElement;
+  if (animate){ h.classList.add('theme-anim'); setTimeout(() => h.classList.remove('theme-anim'), 450); }
+  h.dataset.theme = t;
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'dark' ? '#0b0d1a' : '#f6f2ff';
+  document.querySelectorAll('.theme-btn').forEach(b => b.outerHTML = themeBtn());
+}
+applyTheme(curTheme());
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => { if (!store.get('theme', null)) applyTheme(e.matches ? 'dark' : 'light', true); }); } catch(e){}
 function topBar(title, backHash, extra=''){
+  extra = extra + themeBtn();
   topIn.innerHTML = backHash === null
     ? `<div class="top-title" style="padding-left:4px">📚 Учёба · С-201</div>${extra}`
     : `<button class="back" aria-label="Назад" data-go="${backHash}">${I.back}</button><div class="top-title">${esc(title)}</div>${extra}`;
@@ -296,7 +309,7 @@ function viewHome(){
         <div><b>${esc(last.title)}</b><span>${esc(last.subject.short)} · лекция ${last.num}</span></div><span class="chev">${I.chev}</span></button>` : ''}
       <div class="section-label">Предметы</div>
       <div class="subjects">${SUBJECTS.map(s=>`
-        <button class="subj" data-go="s-${s.id}">
+        <button class="subj" data-go="s-${s.id}" style="--c:${s.color};--ci:${s.ink};--cs:${s.soft}">
           <div class="em" style="background:${s.soft}">${s.emoji}</div>
           <h3>${esc(s.name)}</h3>
           ${s.teacher ? `<div class="teacher">👤 ${esc(s.teacher)}</div>` : ''}
@@ -735,6 +748,7 @@ document.addEventListener('click', e => {
     lecTab = t.dataset.tab; renderTab(l); window.scrollTo({top:0}); return;
   }
   const act = t.dataset.act, l = LEC[t.dataset.id] || LEC[(location.hash||'').slice(1)];
+  if (act==='theme'){ const t = curTheme() === 'dark' ? 'light' : 'dark'; store.set('theme', t); applyTheme(t, true); toast(t === 'dark' ? '🌙 Ночной режим' : '☀️ Дневной режим'); return; }
   if (act==='install') installSheet();
   else if (act==='close') closeSheet();
   else if (act==='download' && l) doDownload(l);
