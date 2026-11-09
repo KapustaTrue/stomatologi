@@ -696,6 +696,13 @@ document.addEventListener('click', e => {
 
 window.__printable = id => printableHTML(LEC[id]);
 window.__ask = (q,s) => answerSearch(q,s||'').map(r=>[r.sc.toFixed(2), r.it.l.id, r.it.kind, r.it.q]);
-if (!window.claude && 'serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+if (!window.claude && 'serviceWorker' in navigator && location.protocol==='https:'){
+  // новая версия сайта: как только свежий service worker взял управление — один раз перезагружаемся
+  const hadSW = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadSW && !reloaded){ reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(r => {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible') r.update().catch(()=>{}); });
+  }).catch(()=>{});
+}
 route();
 })();
