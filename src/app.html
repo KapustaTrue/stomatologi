@@ -293,6 +293,26 @@ html[data-theme=dark] .sch-chg{background:#2e1d10;color:#ffd2ad;border-color:#c8
 .ex-know{margin-left:auto;background:var(--acc-soft);color:var(--acc-ink)}
 .ex-know.on{background:#3f9e5c;color:#fff}
 figure svg text{font-family:"Golos Text",Inter,sans-serif}
+/* 🔊 диктовка */
+.qbtns{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:12px}
+.qbtns .qopen{margin-top:0}
+.say-btn{height:38px;padding:0 14px;border-radius:12px;background:var(--acc);color:#fff;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.ex-say{background:var(--acc-soft);color:var(--acc-ink)}
+.tts{position:fixed;left:0;right:0;margin:0 auto;bottom:calc(12px + env(safe-area-inset-bottom));z-index:40;width:min(560px, calc(100vw - 20px));background:#1d2030;color:#fff;border-radius:20px;padding:10px 12px 10px;box-shadow:0 10px 30px rgba(0,0,0,.3);animation:up .2s}
+.tts-top{display:flex;align-items:flex-start;gap:10px}
+.tts-ic{font-size:20px;line-height:1.3}
+.tts-txt{flex:1;min-width:0}
+.tts-txt small{display:block;font-size:11.5px;opacity:.65;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ttsNow{font-size:14.5px;line-height:1.35;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em}
+.tts-x{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-size:14px;flex:none}
+.tts-ctl{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px}
+.tts-ctl button{height:42px;min-width:42px;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:17px;font-weight:700;padding:0 8px}
+.tts-ctl .tts-main{min-width:54px;background:var(--acc);font-size:19px}
+.tts-ctl .tts-txtbtn{font-size:13px}
+html.tts-on .wrap{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
+html.tts-on .fab-top{bottom:calc(150px + env(safe-area-inset-bottom))}
+html.tts-on .toast{bottom:calc(150px + env(safe-area-inset-bottom))}
+html.vw-open .tts{display:none}
 </style>
 </head>
 <body>

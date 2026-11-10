@@ -423,6 +423,14 @@ function renderQuick(){
   const ttl = it => it.kind === 'full' ? fullLabel(it) : hl(esc(it.q));
   const btn = it => it.kind === 'exam' ? `<button class="qopen" data-exopen="${it.exk}">Открыть в вопросах к экзамену →</button>` : it.kind === 'full' ? fullBtn(it, 'qopen') : `<button class="qopen" data-go="${go(it)}" ${it.si!=null?`data-sec="${it.si}"`:''}>Открыть в конспекте →</button>`;
   const go = it => hashId(it.l.id);
+  // 🔊 Продиктовать: текст ответа кладём в реестр, в кнопке — только номер
+  SAY.length = 0;
+  const sayParts = it => {
+    if (it.kind === 'exam'){ const [sid, key] = it.exk.split('|'), ex = EXAM[sid] && examFind(sid, key); if (ex) return ex.short; }
+    if (it.kind === 'full'){ const tmp = document.createElement('div'); tmp.innerHTML = ans(it); return [tmp.textContent.replace(/^…/, '').replace(/…$/, '')]; }
+    return [it.a];
+  };
+  const say = it => TTS_OK ? `<button class="say-btn" data-say="${SAY.push({ parts: sayParts(it), title: strip(it.q || '') }) - 1}">🔊 Продиктовать</button>` : '';
   const [top, ...rest] = r;
   const t = top.it;
   box.innerHTML = `
@@ -431,13 +439,155 @@ function renderQuick(){
       <div class="qq">${ttl(t)}</div>
       <div class="qa">${ans(t)}</div>
       ${(t.kind==='sec'||t.kind==='exam') && t.more ? `<details class="qmore"><summary>Подробнее</summary><div>${hl(esc(t.more))}</div></details>` : ''}
-      ${btn(t)}
+      <div class="qbtns">${say(t)}${btn(t)}</div>
     </div>
     ${rest.length ? `<div class="section-label">Похожие ответы</div>` + rest.map(({it}) => `
       <details class="qalt"><summary><small>${src(it)}</small><b>${ttl(it)}</b></summary>
         <div class="qa">${ans(it)}</div>
-        ${btn(it)}</details>`).join('') : ''}`;
+        <div class="qbtns">${say(it)}${btn(it)}</div></details>`).join('') : ''}`;
 }
+
+
+/* ---------- 🔊 диктовка вслух (голос телефона; звук идёт туда же, куда музыка — в Bluetooth-наушники, если подключены) ---------- */
+const TTS_OK = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+const SAY = [];
+const TTS_RATES = [0.8, 1, 1.2, 1.5];
+const TTS = { parts: [], list: [], i: 0, on: false, paused: false, done: false, gen: 0, tmr: 0, u: null, title: '', lock: null,
+  rate: store.get('ttsRate', 1), dict: store.get('ttsDict', false) };
+if (TTS_OK) try { speechSynthesis.getVoices(); } catch(e){} // Chrome подгружает голоса не сразу
+function ttsVoice(){
+  let vs = []; try { vs = speechSynthesis.getVoices().filter(v => /^ru/i.test(v.lang)); } catch(e){}
+  if (!vs.length) return null;
+  const sc = v => (/enhanced|premium|улучш/i.test(v.name) ? 4 : 0) + (/milena|милена|google|yuri|юрий|katya|катя|dariya|svetlana|irina/i.test(v.name) ? 2 : 0) + (v.localService ? 1 : 0);
+  return vs.sort((a, b) => sc(b) - sc(a))[0];
+}
+// текст → то, что удобно слушать: без тегов, эмодзи и сокращений
+function ttsClean(s){
+  const W = '(^|[^а-яёa-z])';
+  const rep = [[W + 'т\\.\\s?е\\.', 'то есть'], [W + 'т\\.\\s?к\\.', 'так как'], [W + 'и т\\.\\s?д\\.', 'и так далее'], [W + 'и т\\.\\s?п\\.', 'и тому подобное'],
+    [W + 'т\\.\\s?н\\.', 'так называемый'], [W + 'напр\\.', 'например'], [W + 'в т\\.\\s?ч\\.', 'в том числе'], [W + 'мин\\.', 'минут'], [W + 'ч\\.(?=\\s|$)', 'часов']];
+  let t = strip(String(s)).replace(/&nbsp;/g, ' ').replace(/&amp;/g, ' и ').replace(/&lt;/g, ' меньше ').replace(/&gt;/g, ' больше ').replace(/&quot;/g, '"');
+  try { t = t.replace(/[\p{Extended_Pictographic}️‍]/gu, ''); } catch(e){}
+  rep.forEach(([a, b]) => { t = t.replace(new RegExp(a, 'gi'), '$1' + b); });
+  return t.replace(/\s*[→⇒➝➔]\s*/g, ' — ').replace(/≈/g, ' примерно ').replace(/≥/g, ' не меньше ').replace(/≤/g, ' не больше ')
+    .replace(/±/g, ' плюс-минус ').replace(/°\s?С|°\s?C/g, ' градусов').replace(/°/g, ' градусов').replace(/×/g, ' на ').replace(/([а-яё]{4,})\/([а-яё]{4,})/gi, '$1 или $2').replace(/\s+/g, ' ').trim();
+}
+// режем на фразы: обычный режим — по предложениям, диктант — короткими кусками, чтобы успевать записывать
+function ttsSplit(parts, dict){
+  const max = dict ? 75 : 220, out = [];
+  parts.forEach(p => {
+    const t = ttsClean(p); if (!t) return;
+    // предложения: точка + пробел, но не внутри «кавычек» и не перед строчной буквой
+    const sents = []; let st = 0, q = 0;
+    for (let i = 0; i < t.length; i++){
+      const ch = t[i];
+      if (ch === '«') q++; else if (ch === '»') q = Math.max(0, q - 1);
+      else if (!q && '.!?…;'.includes(ch) && t[i+1] === ' ' && (ch === ';' || !/[a-zа-яё]/.test(t[i+2] || ''))){ sents.push(t.slice(st, i + 1)); st = i + 2; }
+    }
+    sents.push(t.slice(st));
+    sents.forEach(sn => {
+      sn = sn.trim(); if (!sn) return;
+      if (sn.length <= max){ out.push(sn); return; }
+      const parts = []; let cur = '';
+      sn.replace(/([,:])\s+/g, '$1\u0001').replace(/\s+—\s+/g, ' —\u0001').replace(/\s+\(/g, '\u0001(').split('\u0001').forEach(b => {
+        if (cur && (cur + ' ' + b).length > max){ parts.push(cur); cur = b; } else cur = cur ? cur + ' ' + b : b;
+      });
+      // короткий хвост приклеиваем к предыдущему куску
+      if (cur){ if (parts.length && cur.length < max * .35 && (parts[parts.length-1] + ' ' + cur).length < max * 1.3) parts[parts.length-1] += ' ' + cur; else parts.push(cur); }
+      out.push(...parts);
+    });
+  });
+  return out;
+}
+function ttsStart(parts, title){
+  if (!TTS_OK) return;
+  const list = ttsSplit(parts, TTS.dict); if (!list.length){ toast('Тут нечего диктовать'); return; }
+  Object.assign(TTS, { parts, list, i: 0, title: strip(title || ''), on: true, paused: false, done: false });
+  ttsBar(); ttsLock(true); ttsPlay();
+  if (!store.get('ttsTip')){ store.set('ttsTip', 1); toast('🎧 Звук идёт туда же, куда музыка: подключены наушники — будет в них'); }
+  else if (!ttsVoice()) setTimeout(() => { if (TTS.on && !ttsVoice()) toast('Нет русского голоса в телефоне — поставь его в настройках озвучки'); }, 1500);
+}
+function ttsPlay(){
+  const g = ++TTS.gen; clearTimeout(TTS.tmr);
+  TTS.paused = false; TTS.done = false;
+  const busy = speechSynthesis.speaking || speechSynthesis.pending;
+  try { speechSynthesis.cancel(); } catch(e){}
+  const go = () => {
+    if (g !== TTS.gen) return;
+    const u = new SpeechSynthesisUtterance(TTS.list[TTS.i]);
+    u.lang = 'ru-RU'; const v = ttsVoice(); if (v) u.voice = v;
+    u.rate = TTS.rate * (TTS.dict ? 0.85 : 1);
+    u.onend = () => { if (g === TTS.gen) ttsAfter(g, u.text); };
+    u.onerror = e => { if (g !== TTS.gen || e.error === 'interrupted' || e.error === 'canceled') return; ttsAfter(g, u.text); };
+    TTS.u = u; // держим ссылку: иначе Chrome теряет onend
+    speechSynthesis.speak(u); ttsUpd();
+  };
+  if (busy) setTimeout(go, 90); else go(); // первый запуск — прямо в нажатии (так требует iPhone)
+}
+function ttsAfter(g, text){
+  if (TTS.i >= TTS.list.length - 1){ TTS.gen++; TTS.paused = true; TTS.done = true; ttsLock(false); ttsUpd(); return; }
+  const pause = TTS.dict ? Math.min(6500, 800 + text.length * 60) / TTS.rate : 250; // в диктанте — пауза, чтобы записать
+  TTS.tmr = setTimeout(() => { if (g !== TTS.gen) return; TTS.i++; ttsPlay(); }, pause);
+}
+function ttsPause(){ TTS.gen++; clearTimeout(TTS.tmr); try { speechSynthesis.cancel(); } catch(e){} TTS.paused = true; ttsLock(false); ttsUpd(); }
+function ttsStop(){
+  TTS.gen++; clearTimeout(TTS.tmr); try { speechSynthesis.cancel(); } catch(e){}
+  TTS.on = false; ttsLock(false); const b = $('#tts'); if (b) b.remove(); document.documentElement.classList.remove('tts-on');
+}
+async function ttsLock(on){ // не даём экрану погаснуть, пока диктует (на iPhone с погасшим экраном озвучка встаёт)
+  try {
+    if (on && !TTS.lock && 'wakeLock' in navigator){ TTS.lock = await navigator.wakeLock.request('screen'); TTS.lock.addEventListener('release', () => { TTS.lock = null; }); }
+    else if (!on && TTS.lock){ const l = TTS.lock; TTS.lock = null; await l.release(); }
+  } catch(e){}
+}
+function ttsBar(){
+  let b = $('#tts');
+  if (!b){ b = document.createElement('div'); b.id = 'tts'; b.className = 'tts'; document.body.appendChild(b); }
+  document.documentElement.classList.add('tts-on');
+  b.innerHTML = `<div class="tts-top"><span class="tts-ic">🔊</span><div class="tts-txt"><small id="ttsTitle"></small><div id="ttsNow"></div></div><button class="tts-x" data-tts="stop" aria-label="Закрыть">✕</button></div>
+    <div class="tts-ctl">
+      <button data-tts="prev" aria-label="Предыдущая фраза">⏮</button>
+      <button data-tts="again" aria-label="Повторить фразу">↺</button>
+      <button data-tts="toggle" class="tts-main" id="ttsToggle" aria-label="Пауза">⏸</button>
+      <button data-tts="next" aria-label="Следующая фраза">⏭</button>
+      <button data-tts="rate" id="ttsRate" class="tts-txtbtn" aria-label="Скорость"></button>
+      <button data-tts="mode" id="ttsMode" class="tts-txtbtn" aria-label="Режим"></button>
+    </div>`;
+  ttsUpd();
+}
+function ttsUpd(){
+  if (!$('#tts')) return;
+  const n = TTS.list.length;
+  $('#ttsTitle').textContent = (TTS.done ? '✓ Готово' : `${TTS.i + 1} из ${n}`) + (TTS.title ? ' · ' + TTS.title : '');
+  $('#ttsNow').textContent = TTS.done ? 'Нажми ▶, чтобы прослушать ещё раз' : TTS.list[TTS.i] || '';
+  const tg = $('#ttsToggle'); tg.textContent = TTS.paused ? '▶' : '⏸'; tg.setAttribute('aria-label', TTS.paused ? 'Дальше' : 'Пауза');
+  $('#ttsRate').textContent = String(TTS.rate).replace('.', ',') + '×';
+  $('#ttsMode').textContent = TTS.dict ? '✍️ Диктант' : '🗣 Подряд';
+}
+function ttsCmd(a){
+  const n = TTS.list.length;
+  if (a === 'stop') return ttsStop();
+  if (a === 'toggle'){ if (TTS.done){ TTS.i = 0; ttsLock(true); ttsPlay(); } else if (TTS.paused){ ttsLock(true); ttsPlay(); } else ttsPause(); return; }
+  if (a === 'again'){ ttsLock(true); ttsPlay(); return; }
+  if (a === 'prev'){ TTS.i = Math.max(0, TTS.i - 1); ttsLock(true); ttsPlay(); return; }
+  if (a === 'next'){ if (TTS.i < n - 1){ TTS.i++; ttsLock(true); ttsPlay(); } return; }
+  if (a === 'rate'){ TTS.rate = TTS_RATES[(TTS_RATES.indexOf(TTS.rate) + 1) % TTS_RATES.length]; store.set('ttsRate', TTS.rate); if (!TTS.paused) ttsPlay(); else ttsUpd(); return; }
+  if (a === 'mode'){
+    // пересобираем фразы и остаёмся примерно на том же месте
+    const at = TTS.list.slice(0, TTS.i).join(' ').length;
+    TTS.dict = !TTS.dict; store.set('ttsDict', TTS.dict); TTS.list = ttsSplit(TTS.parts, TTS.dict);
+    let acc = 0, j = 0; while (j < TTS.list.length - 1 && acc + TTS.list[j].length < at){ acc += TTS.list[j].length + 1; j++; }
+    TTS.i = TTS.done ? 0 : j;
+    toast(TTS.dict ? '✍️ Диктант: по кусочку, с паузами, чтобы успевать писать' : '🗣 Подряд: читает без пауз');
+    if (!TTS.paused) ttsPlay(); else ttsUpd(); return;
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !TTS.on || TTS.paused) return;
+  ttsLock(true);
+  // iPhone останавливает озвучку, если экран погас — продолжаем с текущей фразы
+  setTimeout(() => { if (TTS.on && !TTS.paused && !speechSynthesis.speaking && !speechSynthesis.pending) ttsPlay(); }, 400);
+});
 
 /* ---------- views ---------- */
 function viewHome(){
@@ -559,7 +709,7 @@ function examItemHTML(sid, it, kind){
     <div class="ex-a">
       <div class="mode ex-mode"><button class="${mode==='full'?'on':''}" data-exm="full" data-key="${key}">📖 Полный ответ</button><button class="${mode==='short'?'on':''}" data-exm="short" data-key="${key}">⚡ Кратко</button></div>
       <div class="ex-body">${examBody(it, mode)}</div>
-      <div class="ex-foot">${lecs}<button class="ex-lec ex-bug" data-bug="X|${sid}|${key}" aria-label="Нашёл ошибку" title="Нашёл ошибку">🐞</button><button class="ex-know ${kn?'on':''}" data-exknow="${key}">${kn?'✓ Знаю':'Отметить «знаю»'}</button></div>
+      <div class="ex-foot">${lecs}${TTS_OK ? `<button class="ex-lec ex-say" data-sayex="${key}">🔊 Продиктовать</button>` : ''}<button class="ex-lec ex-bug" data-bug="X|${sid}|${key}" aria-label="Нашёл ошибку" title="Нашёл ошибку">🐞</button><button class="ex-know ${kn?'on':''}" data-exknow="${key}">${kn?'✓ Знаю':'Отметить «знаю»'}</button></div>
     </div></details>`;
 }
 function viewExam(s){
@@ -1114,6 +1264,14 @@ document.addEventListener('click', e => {
     else if (a==='new'){ examOnlyNew = !examOnlyNew; exa.classList.toggle('on', examOnlyNew); renderExamList(SUBJ[sid]); }
     else if (a==='pdf' || a==='pdf-short'){ const sh = a==='pdf-short'; openFile(`pdf/exam-${sid}${sh?'-short':''}.pdf`, `${EXAM[sid].title}${sh?' — кратко':''}.pdf`); }
     return; }
+  const tb = e.target.closest('[data-tts]');
+  if (tb){ ttsCmd(tb.dataset.tts); return; }
+  const sy = e.target.closest('[data-say]');
+  if (sy){ const x = SAY[+sy.dataset.say]; if (x) ttsStart(x.parts, x.title); return; }
+  const sx = e.target.closest('[data-sayex]');
+  if (sx){ const k = sx.dataset.sayex, sid = (location.hash||'').slice(6), it = examFind(sid, k); if (!it) return;
+    const full = (EXM[k] || examMode) === 'full';
+    ttsStart(full ? it.full.map(blockText) : it.short, (k[0]==='t' ? 'Вопрос ' + it.n : 'Практика ' + it.n) + (full ? ' · полный' : ' · кратко')); return; }
   const bg = e.target.closest('[data-bug]');
   if (bg){ e.preventDefault(); openBug(bg.dataset.bug); return; }
   if (e.target.closest('#bugGo')){ setTimeout(closeSheet, 400); return; }
