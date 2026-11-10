@@ -2,7 +2,9 @@
 # Запускается GitHub Actions каждые 5 минут (.github/workflows/homework-bot.yml).
 # В чате: «#дз микра выучить таблицу» или «/dz генетика задачи 1–5 на пятницу».
 # Команды: /dzstart — привязать бота к группе (один раз), /dzlist — всё ДЗ, /dzdel — ответом на сообщение с ДЗ, /dzhelp — помощь.
-import json, os, re, subprocess, sys, time, urllib.request, urllib.parse
+# «Нашёл ошибку»: кнопка на сайте открывает бота по ссылке t.me/<бот>?start=<место>; человек пишет, что не так,
+# бот пересылает админу (тот, кто написал боту в личку /errors). Ответ админа на такое сообщение уходит автору.
+import json, os, re, subprocess, sys, time, hmac, hashlib, urllib.request, urllib.parse
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 
@@ -10,7 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TZ = ZoneInfo('Europe/Moscow')
 TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
 DRY = os.environ.get('BOT_DRY_RUN') == '1'          # для проверки без Telegram и git
-F_HW, F_SCH, F_CFG = (os.path.join(ROOT, f) for f in ('homework.json', 'schedule.json', 'bot/config.json'))
+F_HW, F_SCH, F_CFG, F_ST, F_PL = (os.path.join(ROOT, f) for f in ('homework.json', 'schedule.json', 'bot/config.json', 'bot/state.json', 'bot/places.json'))
 
 def load(p, default):
     try: return json.load(open(p, encoding='utf-8'))
@@ -130,11 +132,137 @@ def fmt_item(sch, it):
     when = when_text(sch, date.fromisoformat(it['date']), it['pair']) if it.get('date') else 'ближайшая пара (ждём новое расписание)'
     return f'• {it["subj"]} — {when}\n   {it["text"]}'
 
+# ---------- «Нашёл ошибку» ----------
+SITE = 'https://kapustatrue.github.io/stomatologi/'
+PLACE_RE = re.compile(r'^(?:e_[a-z0-9]+_[\w-]+|x_[tp]\d+_[\w-]+|g)$', re.I)
+def uhash(uid):  # в публичном репозитории храним не id человека, а его отпечаток
+    return hmac.new((TOKEN or 'dry').encode(), str(uid).encode(), hashlib.sha256).hexdigest()[:16]
+
+def place_label(p):
+    """Код места из ссылки → (подпись, ссылка на сайт)."""
+    P = load(F_PL, {}); site = P.get('site') or SITE
+    if not p: return None, None
+    if p == 'g': return 'Сайт в целом', site
+    k, code, rest = (p.split('_', 2) + ['', ''])[:3]
+    if k == 'e':
+        L = P.get('lec', {}).get(rest)
+        if not L: return f'Лекция {rest}', site + '#' + rest
+        head = f'{L["s"]} · лекция {L["n"]} «{L["t"]}»'
+        m = re.fullmatch(r'([a-z]?)(\d*)', code)
+        kind, num = (m.group(1), m.group(2)) if m else ('x', '')
+        if kind == '' and num:
+            i = int(num); sec = L['sec'][i] if i < len(L['sec']) else ''
+            what = f'раздел {i + 1}' + (f' «{sec}»' if sec else '')
+        elif kind == 'r': what = '«Что запомнить»'
+        elif kind == 'f': what = 'полная версия'
+        elif kind == 'c':
+            if num and int(num) < len(L['cards']): what = f'карточка: «{L["cards"][int(num)]}»'
+            else: what = 'карточки'
+        elif kind == 'q':
+            if num and int(num) < len(L['quiz']): what = f'тест, вопрос {int(num) + 1}: «{L["quiz"][int(num)]}»'
+            else: what = 'тест'
+        else: what = 'другое'
+        return f'{head} — {what}', site + '#' + rest
+    if k == 'x':
+        E = P.get('exam', {}).get(rest)
+        kind, n = code[:1], code[1:]
+        if not E: return f'Экзамен {rest}, {code}', site + '#exam-' + rest
+        q = E['theory' if kind == 't' else 'practice'].get(n, '')
+        return f'{E["t"]} — {"вопрос " + n if kind == "t" else "практика П" + n}' + (f': «{q}»' if q else ''), site + '#exam-' + rest
+    return None, None
+
+def who(u):
+    name = ' '.join(x for x in ((u or {}).get('first_name'), (u or {}).get('last_name')) if x).strip() or 'Без имени'
+    return name + (f' (@{u["username"]})' if (u or {}).get('username') else '')
+
+CAPTIONABLE = ('photo', 'video', 'document', 'animation', 'audio', 'voice')
+def send_report(dest, msg, place, note=''):
+    """Переслать сообщение об ошибке админу. True — получилось."""
+    label, link = place_label(place)
+    head = '🐞 Ошибка на сайте\n' + (f'📍 {label}\n🔗 {link}\n' if label else '📍 место не указано\n') + f'👤 {who(msg.get("from"))}'
+    foot = f'\n\n↩️ Ответь на это сообщение — перешлю ответ автору.{note}\n#u{msg["chat"]["id"]}'
+    try:
+        if any(k in msg for k in CAPTIONABLE):
+            cap = msg.get('caption') or ''
+            body = head + (f'\n\n💬 {cap}' if cap else '')
+            tg('copyMessage', chat_id=dest, from_chat_id=msg['chat']['id'], message_id=msg['message_id'], caption=(body[:1024 - len(foot)] + foot))
+        elif msg.get('text'):
+            tg('sendMessage', chat_id=dest, text=(head + '\n\n💬 ' + msg['text'])[:4096 - len(foot)] + foot, disable_web_page_preview=True)
+        else:  # стикер, кружок и т. п. — заголовок отдельным сообщением, на него и отвечать
+            h = tg('sendMessage', chat_id=dest, text=head + foot, disable_web_page_preview=True)
+            tg('copyMessage', chat_id=dest, from_chat_id=msg['chat']['id'], message_id=msg['message_id'], reply_to_message_id=h.get('message_id'), allow_sending_without_reply=True)
+        return True
+    except Exception as e:
+        print('send_report:', e); return False
+
+PRIVATE_HELLO = ('Привет! Я бот сайта «Зубрёжка» группы С-201.\n\n'
+                 '🐞 Нашёл ошибку в конспекте, карточке или ответе? Нажми на сайте «Нашёл ошибку» или просто напиши её сюда (можно со скрином) — передам админу.\n\n'
+                 '📝 Домашку я записываю в чате группы: #дз предмет текст.')
+
+def handle_private(msg, cfg, st, now):
+    """Личка: /start с местом ошибки, /errors (стать получателем), ответы админа, сами сообщения об ошибках.
+    Возвращает (cfg_changed, st_changed)."""
+    chat = msg['chat']['id']; text = (msg.get('text') or '').strip()
+    parts = text.split(maxsplit=1); cmd = parts[0].lower().split('@')[0] if text.startswith('/') else ''
+    pend = st.setdefault('pending', {}); done = st.setdefault('done', [])
+    key = f'{uhash(chat)}:{msg["message_id"]}'
+    if key in done: return False, False                 # уже обработано (повторный запуск)
+    done.append(key); del done[:-300]
+    h = uhash(chat)
+    if cmd == '/start':
+        arg = parts[1].strip() if len(parts) > 1 else ''
+        if PLACE_RE.match(arg):
+            pend[h] = {'p': arg, 't': now.isoformat(timespec='minutes')}
+            label, _ = place_label(arg)
+            reply(chat, msg['message_id'], f'🐞 Сообщение об ошибке\n📍 {label}\n\nНапиши одним сообщением, что не так и как правильно (если знаешь). Можно приложить скрин — я передам админу сайта.')
+        else:
+            reply(chat, msg['message_id'], PRIVATE_HELLO)
+        return False, True
+    if cmd == '/errors':
+        if cfg.get('admin') in (None, chat):
+            new = cfg.get('admin') is None; cfg['admin'] = chat
+            reply(chat, msg['message_id'], '✅ Готово: сообщения об ошибках с сайта будут приходить сюда.\nЧтобы ответить автору — ответь (Reply) на его сообщение.')
+            return new, True
+        reply(chat, msg['message_id'], 'Получатель сообщений об ошибках уже назначен.'); return False, True
+    if cmd in ('/help', '/dzhelp'):
+        reply(chat, msg['message_id'], PRIVATE_HELLO + '\n\n' + HELP); return False, True
+    if cmd:
+        reply(chat, msg['message_id'], 'Не знаю такую команду 🤔 Если нашёл ошибку на сайте — просто напиши её сюда.'); return False, True
+    if TRIGGER.match(text):
+        reply(chat, msg['message_id'], '📝 Домашку пиши в чате группы — там я её и запишу.'); return False, True
+    # ответ админа автору
+    r = msg.get('reply_to_message')
+    if chat == cfg.get('admin') and r:
+        m = re.search(r'#u(-?\d+)', (r.get('text') or r.get('caption') or ''))
+        if m:
+            uid = int(m.group(1))
+            try:
+                tg('sendMessage', chat_id=uid, text='💬 Ответ админа на твоё сообщение об ошибке:')
+                tg('copyMessage', chat_id=uid, from_chat_id=chat, message_id=msg['message_id'])
+                reply(chat, msg['message_id'], '📨 Отправил автору.')
+            except Exception as e:
+                print('ответ автору:', e); reply(chat, msg['message_id'], 'Не получилось отправить — возможно, автор остановил бота.')
+            return False, True
+    # само сообщение об ошибке
+    p = pend.get(h); place = None
+    if p:
+        age = now - datetime.fromisoformat(p['t'])
+        if (not p.get('sent') and age < timedelta(days=1)) or (p.get('sent') and now - datetime.fromisoformat(p['sent']) < timedelta(minutes=30)):
+            place = p['p']
+    dest = cfg.get('admin') or cfg.get('chat'); note = ''
+    if not cfg.get('admin'): note = '\n(Админ, напиши мне в личку /errors — тогда такие сообщения будут приходить только тебе.)'
+    if dest and send_report(dest, msg, place, note):
+        if place: pend[h] = {'p': place, 't': p['t'], 'sent': now.isoformat(timespec='minutes')}
+        reply(chat, msg['message_id'], '✅ Спасибо! Передал админу. Если хочешь что-то добавить — просто напиши ещё сюда.')
+    else:
+        reply(chat, msg['message_id'], 'Не получилось передать 😕 Напиши, пожалуйста, об ошибке в чат группы.')
+    return False, True
+
 # ---------- основной цикл ----------
 def run(updates, now=None):
     now = now or datetime.now(TZ)
-    sch = load(F_SCH, None); hw = load(F_HW, {'items': []}); cfg = load(F_CFG, {'chat': None})
-    items = hw['items']; changed = False; cfg_changed = False
+    sch = load(F_SCH, None); hw = load(F_HW, {'items': []}); cfg = load(F_CFG, {'chat': None}); st = load(F_ST, {})
+    items = hw['items']; changed = False; cfg_changed = False; st_changed = False
     for up in updates:
         msg = up.get('message') or up.get('edited_message')
         if not msg: continue
@@ -143,7 +271,9 @@ def run(updates, now=None):
         text = msg.get('text') or msg.get('caption') or ''
         cmd = text.strip().split()[0].lower().split('@')[0] if text.strip() else ''
         if ctype == 'private':
-            if cmd in ('/start', '/help', '/dzhelp'): reply(chat, msg['message_id'], 'Привет! Я записываю домашку группы С-201 на сайт «Зубрёжка». Добавь меня в чат группы и напиши там /dzstart.\n\n' + HELP)
+            if edited: continue
+            c, s_ = handle_private(msg, cfg, st, now)
+            cfg_changed |= c; st_changed |= s_
             continue
         if cmd == '/dzstart':
             if cfg.get('chat') in (None, chat):
@@ -195,15 +325,19 @@ def run(updates, now=None):
     kept = [it for it in items if (it.get('date') and it['date'] >= cut) or (not it.get('date') and it['created'] >= cut_u)]
     if len(kept) != len(items): items[:] = kept; changed = True
     if changed: hw['items'] = items; save(F_HW, hw)
+    # отпечатки «где ошибка» живут 2 дня
+    pend = st.get('pending', {})
+    for k in [k for k, v in pend.items() if now - datetime.fromisoformat(v.get('sent') or v['t']) > timedelta(days=2)]: del pend[k]; st_changed = True
     if cfg_changed: save(F_CFG, cfg)
-    return changed or cfg_changed
+    if st_changed: save(F_ST, st)
+    return changed or cfg_changed or st_changed
 
 def git_push():
     def sh(*a): subprocess.run(a, cwd=ROOT, check=True)
     sh('git', 'config', 'user.name', 'Зубрёжка-бот'); sh('git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com')
-    sh('git', 'add', 'homework.json', 'bot/config.json')
+    sh('git', 'add', 'homework.json', 'bot/config.json', 'bot/state.json')
     if subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=ROOT).returncode == 0: return
-    sh('git', 'commit', '-q', '-m', 'ДЗ из Telegram')
+    sh('git', 'commit', '-q', '-m', 'Бот: ДЗ / ошибки из Telegram')
     for _ in range(3):
         if subprocess.run(['git', 'pull', '--rebase', '-q'], cwd=ROOT).returncode == 0 and subprocess.run(['git', 'push', '-q'], cwd=ROOT).returncode == 0: return
     raise RuntimeError('git push не удался')
@@ -212,6 +346,12 @@ if __name__ == '__main__':
     if not TOKEN: print('Нет TELEGRAM_BOT_TOKEN — добавь секрет в настройках репозитория. Пропускаю.'); sys.exit(0)
     # Слушаем чат несколько минут: пока запуск идёт, бот отвечает сразу.
     # Сообщение подтверждается Telegram только следующим запросом — то есть уже после сохранения на GitHub.
+    # имя бота — для кнопки «Нашёл ошибку» на сайте (сайт читает bot/config.json)
+    try:
+        me = tg('getMe'); cfg = load(F_CFG, {'chat': None})
+        if me.get('username') and cfg.get('username') != me['username']:
+            cfg['username'] = me['username']; save(F_CFG, cfg); git_push()
+    except Exception as e: print('getMe:', e)
     end = time.time() + int(os.environ.get('BOT_LISTEN_SECONDS', '270'))
     offset = None; total = 0
     while time.time() < end:

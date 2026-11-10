@@ -179,6 +179,18 @@ mark{background:#ffe58a;color:inherit;border-radius:3px;padding:0 1px}
 .sheet .os b{display:block;margin-bottom:6px}
 .sheet ol{margin:0;padding-left:20px}
 .sheet li{margin:5px 0}
+.bug-p{color:var(--muted);margin:0}
+.sheet{background:var(--card-solid,var(--card))}
+.sheet .os li b{display:inline;margin:0}
+a.bug-go.primary,html[data-theme=dark] a.bug-go.primary{color:#fff}
+.bug-l{display:block;font-size:13.5px;color:var(--muted);margin:10px 0 6px}
+.bug-sel{width:100%;height:46px;border-radius:13px;border:1px solid var(--line);background:var(--card-solid,var(--card));color:var(--ink);font:inherit;font-size:15px;padding:0 12px}
+.bug-go{display:flex;align-items:center;justify-content:center;width:100%;text-decoration:none;box-sizing:border-box}
+.bug-go[hidden],.bug-miss[hidden]{display:none}
+.bug-miss{text-align:center;color:var(--muted);font-size:14px;padding:12px;background:var(--bg);border-radius:14px}
+.fc-links{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:8px}
+.bug-link{color:var(--muted);font-weight:600}
+.ex-bug{padding:0 11px}
 @keyframes fade{from{opacity:0}} @keyframes up{from{transform:translateY(30px);opacity:0}}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1d2030;color:#fff;padding:11px 18px;border-radius:14px;font-size:14px;font-weight:600;z-index:60;max-width:90vw;text-align:center;animation:up .2s}
 .quick-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin-top:14px;padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,#ffcf3f,#ff9d2e);color:#3a2300;box-shadow:0 6px 18px rgba(255,157,46,.35)}
@@ -6608,7 +6620,7 @@ function viewHome(){
           <div class="bar" style="background:${s.color}"></div>
         </button>`).join('')}</div>
       <button class="install" data-act="install"><span class="em">📲</span><div><b>Поставить на экран телефона</b><span>Будет открываться как приложение — iPhone и Android</span></div></button>
-      <div class="foot">Материалы обновляются · одна ссылка для всей группы</div>
+      <div class="foot">Материалы обновляются · одна ссылка для всей группы<br><button class="link-btn bug-link" data-bug="G">🐞 Нашёл ошибку на сайте?</button></div>
     </div>`;
   const q = $('#q');
   q.addEventListener('input', () => { loadFT(); doSearch(q.value); });
@@ -6699,7 +6711,7 @@ function examItemHTML(sid, it, kind){
     <div class="ex-a">
       <div class="mode ex-mode"><button class="${mode==='full'?'on':''}" data-exm="full" data-key="${key}">📖 Полный ответ</button><button class="${mode==='short'?'on':''}" data-exm="short" data-key="${key}">⚡ Кратко</button></div>
       <div class="ex-body">${examBody(it, mode)}</div>
-      <div class="ex-foot">${lecs}<button class="ex-know ${kn?'on':''}" data-exknow="${key}">${kn?'✓ Знаю':'Отметить «знаю»'}</button></div>
+      <div class="ex-foot">${lecs}<button class="ex-lec ex-bug" data-bug="X|${sid}|${key}" aria-label="Нашёл ошибку" title="Нашёл ошибку">🐞</button><button class="ex-know ${kn?'on':''}" data-exknow="${key}">${kn?'✓ Знаю':'Отметить «знаю»'}</button></div>
     </div></details>`;
 }
 function viewExam(s){
@@ -6805,6 +6817,7 @@ function renderNotes(l, pane, secIdx){
     <div class="actions">
       <button class="chip" data-act="download" data-id="${l.id}">${I.pdf} Скачать PDF</button>
       <button class="chip" data-act="copy" data-id="${l.id}">${I.copy} Копировать текст</button>
+      <button class="chip bug-chip" data-bug="L|${l.id}">🐞 Нашёл ошибку</button>
     </div>
     ${l.link ? `<a class="outlink" href="${l.link.url}" target="_blank" rel="noopener"><span style="font-size:26px">🗺️</span><div><b>${esc(l.link.label)}</b><span>Открывается отдельной страницей</span></div><span class="chev">${I.chev}</span></a>` : ''}
     <details class="toc"><summary><span>Содержание · ${l.sections.length} разделов</span><span>▾</span></summary>
@@ -6835,7 +6848,7 @@ function renderFull(l, pane, toggle){
       <div class="pages">${pagesHTML(F.extra.dir, F.extra.pages, F.extra.sizes, F.extra.title)}</div>`;
   }
   pane.innerHTML = toggle + `
-    <div class="actions"><button class="chip" data-act="dl-full" data-id="${l.id}">${I.pdf} Скачать полный PDF</button>
+    <div class="actions"><button class="chip" data-act="dl-full" data-id="${l.id}">${I.pdf} Скачать полный PDF</button><button class="chip bug-chip" data-bug="L|${l.id}|f">🐞 Нашёл ошибку</button>
     ${F.pages?`<span class="pcount">${F.pages} стр. · нажми на страницу, чтобы увеличить</span>`:''}</div>
     ${body}
     <div style="display:flex;gap:10px;margin-top:16px"><button class="primary" style="flex:1" data-tab="cards">🃏 Учить карточки</button><button class="secondary" style="flex:1" data-tab="quiz">✅ Пройти тест</button></div>
@@ -6947,7 +6960,7 @@ function renderCards(l, pane, mode){
         <div class="face fback"><span class="lbl">Ответ</span><div class="txt">${c[1]}</div></div>
       </div></div>
       <div class="fc-ctrl"><button class="btn-no" id="no">🔁 Ещё учить</button><button class="btn-yes" id="yes">✅ Знаю</button></div>
-      <div style="text-align:center;margin-top:8px"><button class="link-btn" data-act="cards-reset">Сбросить прогресс</button></div>`;
+      <div class="fc-links"><button class="link-btn" data-act="cards-reset">Сбросить прогресс</button><button class="link-btn bug-link" data-bug="L|${l.id}|c${i}">🐞 Ошибка в карточке?</button></div>`;
     $('#fc').onclick = () => $('#fc').classList.toggle('flip');
     $('#yes').onclick = () => { known.add(i); right++; save(); pos++; draw(); };
     $('#no').onclick = () => { known.delete(i); save(); pos++; draw(); };
@@ -6972,7 +6985,8 @@ function renderQuiz(l, pane){
     pane.innerHTML = `
       <div class="fc-top"><span>Вопрос ${pos+1} из ${qs.length}</span><span>правильно: ${score}</span></div>
       <div class="pbar"><i style="width:${pos/qs.length*100}%"></i></div>
-      <div class="q-card"><h3>${q.q}</h3>${q.o.map((o,i)=>`<button class="opt" data-i="${i}">${o}</button>`).join('')}<div id="why"></div></div>`;
+      <div class="q-card"><h3>${q.q}</h3>${q.o.map((o,i)=>`<button class="opt" data-i="${i}">${o}</button>`).join('')}<div id="why"></div></div>
+      <div class="fc-links"><button class="link-btn bug-link" data-bug="L|${l.id}|q${pos}">🐞 Ошибка в вопросе?</button></div>`;
     pane.querySelectorAll('.opt').forEach(b => b.onclick = () => {
       const i = +b.dataset.i, ok = i===q.a; if (ok) score++;
       pane.querySelectorAll('.opt').forEach(x => { x.disabled = true; const xi=+x.dataset.i; if (xi===q.a) x.classList.add('right'); else if (xi===i) x.classList.add('wrong'); });
@@ -7127,6 +7141,61 @@ function installSheet(){
     <div class="os"><b>Компьютер</b><ol><li>Просто сохрани страницу в закладки.</li></ol></div>`);
 }
 
+/* ===== «Нашёл ошибку» → бот в Telegram (bot/homework_bot.py пересылает админу) ===== */
+const BOT_CFG_URL = 'https://raw.githubusercontent.com/KapustaTrue/stomatologi/main/bot/config.json';
+let botName = store.get('botName', ''), botLoad = null;
+function loadBotName(){
+  if (!botLoad) botLoad = fetch(BOT_CFG_URL + '?t=' + Math.floor(Date.now() / 600000), { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null).then(d => { if (d && d.username){ botName = d.username; store.set('botName', botName); } return botName; })
+    .catch(() => botName).finally(() => { setTimeout(() => { botLoad = null; }, 60000); });
+  return botLoad;
+}
+function secInView(){ let cur = 0; document.querySelectorAll('section.sec').forEach((el, i) => { if (el.getBoundingClientRect().top < window.innerHeight * .4) cur = i; }); return cur; }
+let BUG = null; // {kind, id, code}
+function bugPayload(){
+  if (!BUG) return 'g';
+  if (BUG.kind === 'L') return `e_${BUG.code}_${BUG.id}`;
+  if (BUG.kind === 'X') return `x_${BUG.code}_${BUG.id}`;
+  return 'g';
+}
+function bugLink(){ return botName ? `https://t.me/${botName}?start=${encodeURIComponent(bugPayload())}` : ''; }
+function bugSyncLink(){
+  const a = $('#bugGo'), miss = $('#bugMiss'); if (!a) return;
+  const u = bugLink(); a.hidden = !u; if (u) a.href = u; if (miss) miss.hidden = !!u;
+}
+function openBug(spec){
+  const [kind, id, code] = spec.split('|');
+  let where = '', pick = '';
+  if (kind === 'L' && LEC[id]){
+    const l = LEC[id];
+    const def = code || (lecTab === 'notes' ? String(secInView()) : lecTab === 'cards' ? 'c' : 'q');
+    BUG = { kind, id, code: def };
+    where = `${l.subject.emoji} ${l.subject.short} · лекция ${l.num}: ${l.title}`;
+    const opts = [];
+    if (/^c\d+$/.test(def)) opts.push([def, `Эта карточка (${+def.slice(1) + 1}-я по списку)`]);
+    if (/^q\d+$/.test(def)) opts.push([def, `Этот вопрос теста (№${+def.slice(1) + 1})`]);
+    l.sections.forEach((s, i) => opts.push([String(i), `${i + 1}. ${strip(s.title)}`]));
+    opts.push(['r', '📌 Что запомнить']);
+    if (FULL[l.id]) opts.push(['f', '🖼 Полная версия']);
+    opts.push(['c', '🃏 Карточки'], ['q', '✅ Тест'], ['x', 'Другое']);
+    pick = `<label class="bug-l" for="bugWhere">Где именно?</label><select id="bugWhere" class="bug-sel">${opts.map(([v, t]) => `<option value="${v}"${v === def ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
+  } else if (kind === 'X' && typeof EXAM !== 'undefined' && EXAM[id]){
+    const it = examFind(id, code); BUG = { kind, id, code };
+    where = `📝 ${EXAM[id].title} · ${code[0] === 't' ? 'вопрос ' + it.n : 'практика П' + it.n}: ${it.q}`;
+  } else { BUG = { kind: 'G' }; where = '🦷 Сайт в целом'; }
+  openSheet(`<h3>🐞 Нашёл ошибку?</h3>
+    <p class="bug-p">Спасибо, что помогаешь! Сообщение уйдёт админу сайта в Telegram — он поправит.</p>
+    <div class="os"><b>📍 ${esc(where)}</b>${pick}</div>
+    <div class="os"><b>Как отправить</b><ol><li>Нажми кнопку ниже — откроется бот «Зубрёжки» в Telegram.</li><li>Нажми <b>«Старт»</b> (или «Запустить»).</li><li>Напиши одним сообщением, что не так и как правильно. Можно приложить скрин.</li></ol></div>
+    <a id="bugGo" class="primary bug-go" target="_blank" rel="noopener" hidden>✈️ Открыть бота в Telegram</a>
+    <div id="bugMiss" class="bug-miss" hidden>⏳ Бот ещё не подключён — пока напиши об ошибке в чат группы.</div>`);
+  const sel = $('#bugWhere'); if (sel) sel.addEventListener('change', () => { BUG.code = sel.value; bugSyncLink(); });
+  bugSyncLink();
+  if (!botName) { const miss = $('#bugMiss'); if (miss){ miss.hidden = false; miss.textContent = '⏳ Ищу бота…'; }
+    loadBotName().then(() => { const miss = $('#bugMiss'); if (miss) miss.textContent = '⏳ Бот ещё не подключён — пока напиши об ошибке в чат группы.'; bugSyncLink(); }); }
+  else loadBotName().then(bugSyncLink);
+}
+
 /* ---------- routing ---------- */
 function route(){
   closeSheet();
@@ -7193,6 +7262,9 @@ document.addEventListener('click', e => {
     else if (a==='new'){ examOnlyNew = !examOnlyNew; exa.classList.toggle('on', examOnlyNew); renderExamList(SUBJ[sid]); }
     else if (a==='pdf' || a==='pdf-short'){ const sh = a==='pdf-short'; openFile(`pdf/exam-${sid}${sh?'-short':''}.pdf`, `${EXAM[sid].title}${sh?' — кратко':''}.pdf`); }
     return; }
+  const bg = e.target.closest('[data-bug]');
+  if (bg){ e.preventDefault(); openBug(bg.dataset.bug); return; }
+  if (e.target.closest('#bugGo')){ setTimeout(closeSheet, 400); return; }
   const tf = e.target.closest('[data-tfile]');
   if (tf){ const [u, n] = tf.dataset.tfile.split('|'); openFile(u, n); return; }
   const exo = e.target.closest('[data-exopen]');

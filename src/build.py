@@ -19,3 +19,7 @@ ftver = hashlib.md5(open(ft, 'rb').read()).hexdigest()[:8] if os.path.exists(ft)
 t = t.replace('/*DATA*/', data + "\nconst FT_VER = '" + ftver + "';").replace('/*APP*/', r('app.js')).replace('<!--SITEHEAD-->', head).replace('</style>', (r('theme.css') if os.path.exists(os.path.join(here, 'theme.css')) else '') + '\n</style>', 1)
 open(os.path.join(root, 'index.html'), 'w', encoding='utf-8').write(t)
 print('index.html собран')
+# справочник мест для бота «Нашёл ошибку» (bot/places.json); без node просто остаётся прежний
+import subprocess
+try: subprocess.run(['node', os.path.join(here, 'build_places.js')], check=True)
+except Exception as e: print('bot/places.json не обновлён (нужен node):', e)
