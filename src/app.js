@@ -72,6 +72,8 @@ if (typeof SVG_EXTRA !== 'undefined') Object.assign(SVGS, SVG_EXTRA);
 /* ---------- render helpers ---------- */
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const strip = s => String(s).replace(/<[^>]+>/g,'');
+// 🔎 кнопка «Найти в Google» — открывает Google с тем же запросом в новой вкладке
+const gBtn = (q, big) => `<a class="g-btn${big ? ' big' : ''}" href="https://www.google.com/search?q=${encodeURIComponent(q.trim())}" target="_blank" rel="noopener"><span class="g-ic">🔎</span><span>Найти в Google: <b>${esc(q.trim().length > 40 ? q.trim().slice(0, 40) + '…' : q.trim())}</b></span></a>`;
 function blockHTML(b){
   const [t,a,c] = b;
   switch(t){
@@ -408,7 +410,7 @@ function renderQuick(){
     return;
   }
   const r = answerSearch(q, quickSubj);
-  if (!r.length){ box.innerHTML = `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово или убери лишние</small></div>`; return; }
+  if (!r.length){ box.innerHTML = `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово или убери лишние</small></div>${gBtn(q, true)}`; return; }
   const qs = qtoks(q);
   const hl = s => { let h = s; qs.forEach(t => { if (t.length < 3) return; h = h.replace(new RegExp('(^|[^а-яёa-z])(' + t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[а-яёa-z]*)', 'gi'), '$1<mark>$2</mark>'); }); return h; };
   const src = it => it.kind === 'exam' ? `📝 ${esc(it.l.subject.short)} · вопросы к экзамену` : `${it.l.subject.emoji} ${esc(it.l.subject.short)} · ${esc(it.l.title)}`;
@@ -444,7 +446,8 @@ function renderQuick(){
     ${rest.length ? `<div class="section-label">Похожие ответы</div>` + rest.map(({it}) => `
       <details class="qalt"><summary><small>${src(it)}</small><b>${ttl(it)}</b></summary>
         <div class="qa">${ans(it)}</div>
-        <div class="qbtns">${say(it)}${btn(it)}</div></details>`).join('') : ''}`;
+        <div class="qbtns">${say(it)}${btn(it)}</div></details>`).join('') : ''}
+    <div class="g-wrap"><small>Нет нужного ответа?</small>${gBtn(q)}</div>`;
 }
 
 
@@ -658,7 +661,7 @@ function doSearch(raw){
   box.innerHTML = hits.length ? `<div class="section-label">Найдено: ${hits.length}</div>` + hits.slice(0,40).map(h=>`
     ${open(h)}
       <small style="color:${h.l.subject.color}">${h.l.subject.emoji} ${esc(h.l.subject.short)} · ${esc(h.l.title)}</small>
-      <b>${h.full ? fullLabel(h.full) : hl(h.title)}</b><span>${hl(h.text)}</span>${h.full && String(h.full.ref).includes('#') ? '</a>' : '</button>'}`).join('') : `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово</small></div>`;
+      <b>${h.full ? fullLabel(h.full) : hl(h.title)}</b><span>${hl(h.text)}</span>${h.full && String(h.full.ref).includes('#') ? '</a>' : '</button>'}`).join('') + `<div class="g-wrap"><small>Не нашёл в конспектах?</small>${gBtn(raw)}</div>` : `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово</small></div>${gBtn(raw, true)}`;
 }
 
 function viewSubject(s){

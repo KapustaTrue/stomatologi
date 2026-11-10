@@ -328,6 +328,14 @@ html.tts-on .wrap{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
 html.tts-on .fab-top{bottom:calc(150px + env(safe-area-inset-bottom))}
 html.tts-on .toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 html.vw-open .tts{display:none}
+/* 🔎 Найти в Google */
+.g-wrap{margin:18px 0 6px;text-align:center}
+.g-wrap small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:6px}
+.g-btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 16px;border-radius:14px;background:var(--card);box-shadow:var(--shadow);color:var(--ink);text-decoration:none;font-size:14.5px;font-weight:600;line-height:1.3}
+.g-btn b{font-weight:800;color:var(--acc-ink)}
+.g-btn.big{margin:14px auto 0;max-width:420px;background:var(--acc);color:#fff;font-size:15.5px}
+.g-btn.big b{color:#fff}
+.g-ic{font-size:18px}
 @font-face{font-family:'Unbounded';font-style:normal;font-display:swap;font-weight:600;src:url(fonts/unbounded-cyrillic-600-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Unbounded';font-style:normal;font-display:swap;font-weight:600;src:url(fonts/unbounded-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:'Unbounded';font-style:normal;font-display:swap;font-weight:700;src:url(fonts/unbounded-cyrillic-700-normal.woff2) format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
@@ -6919,6 +6927,8 @@ if (typeof SVG_EXTRA !== 'undefined') Object.assign(SVGS, SVG_EXTRA);
 /* ---------- render helpers ---------- */
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const strip = s => String(s).replace(/<[^>]+>/g,'');
+// 🔎 кнопка «Найти в Google» — открывает Google с тем же запросом в новой вкладке
+const gBtn = (q, big) => `<a class="g-btn${big ? ' big' : ''}" href="https://www.google.com/search?q=${encodeURIComponent(q.trim())}" target="_blank" rel="noopener"><span class="g-ic">🔎</span><span>Найти в Google: <b>${esc(q.trim().length > 40 ? q.trim().slice(0, 40) + '…' : q.trim())}</b></span></a>`;
 function blockHTML(b){
   const [t,a,c] = b;
   switch(t){
@@ -7255,7 +7265,7 @@ function renderQuick(){
     return;
   }
   const r = answerSearch(q, quickSubj);
-  if (!r.length){ box.innerHTML = `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово или убери лишние</small></div>`; return; }
+  if (!r.length){ box.innerHTML = `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово или убери лишние</small></div>${gBtn(q, true)}`; return; }
   const qs = qtoks(q);
   const hl = s => { let h = s; qs.forEach(t => { if (t.length < 3) return; h = h.replace(new RegExp('(^|[^а-яёa-z])(' + t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[а-яёa-z]*)', 'gi'), '$1<mark>$2</mark>'); }); return h; };
   const src = it => it.kind === 'exam' ? `📝 ${esc(it.l.subject.short)} · вопросы к экзамену` : `${it.l.subject.emoji} ${esc(it.l.subject.short)} · ${esc(it.l.title)}`;
@@ -7291,7 +7301,8 @@ function renderQuick(){
     ${rest.length ? `<div class="section-label">Похожие ответы</div>` + rest.map(({it}) => `
       <details class="qalt"><summary><small>${src(it)}</small><b>${ttl(it)}</b></summary>
         <div class="qa">${ans(it)}</div>
-        <div class="qbtns">${say(it)}${btn(it)}</div></details>`).join('') : ''}`;
+        <div class="qbtns">${say(it)}${btn(it)}</div></details>`).join('') : ''}
+    <div class="g-wrap"><small>Нет нужного ответа?</small>${gBtn(q)}</div>`;
 }
 
 
@@ -7505,7 +7516,7 @@ function doSearch(raw){
   box.innerHTML = hits.length ? `<div class="section-label">Найдено: ${hits.length}</div>` + hits.slice(0,40).map(h=>`
     ${open(h)}
       <small style="color:${h.l.subject.color}">${h.l.subject.emoji} ${esc(h.l.subject.short)} · ${esc(h.l.title)}</small>
-      <b>${h.full ? fullLabel(h.full) : hl(h.title)}</b><span>${hl(h.text)}</span>${h.full && String(h.full.ref).includes('#') ? '</a>' : '</button>'}`).join('') : `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово</small></div>`;
+      <b>${h.full ? fullLabel(h.full) : hl(h.title)}</b><span>${hl(h.text)}</span>${h.full && String(h.full.ref).includes('#') ? '</a>' : '</button>'}`).join('') + `<div class="g-wrap"><small>Не нашёл в конспектах?</small>${gBtn(raw)}</div>` : `<div class="empty">🤔 ${esc(joke('empty'))}<br><small>Попробуй другое слово</small></div>${gBtn(raw, true)}`;
 }
 
 function viewSubject(s){
