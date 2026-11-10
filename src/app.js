@@ -196,6 +196,7 @@ function viewSchedule(keep){
     const pairs = SCHEDULE.days[schedDay] || [], d = schedDate(schedDay), isToday = schedDay === today;
     const m = new Date().getHours()*60 + new Date().getMinutes();
     let html = `<div class="sch-dayhead"><h2>${DAY_FULL[schedDay]}</h2><span>${d.getDate()} ${MON_GEN[d.getMonth()]}${isToday ? ' · сегодня' : ''}</span></div>`;
+    if ((SCHEDULE.dayNotes||{})[schedDay]) html += `<div class="sch-joke">${esc(SCHEDULE.dayNotes[schedDay])}</div>`;
     if (!pairs.length) html += `<div class="sch-free"><div class="big">🎉</div><b>Пар нет</b><p>Можно выспаться. Или повторить конспект — решать тебе.</p></div>`;
     pairs.forEach((p, k) => {
       const [a, b] = SCHEDULE.times[p.n] || ['', ''], c = schedStyle(p.subj);

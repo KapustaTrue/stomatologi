@@ -243,6 +243,8 @@ a.res{text-decoration:none;color:inherit}
 .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px}
 
 /* экзамен */
+.sch-joke{background:linear-gradient(135deg,#e8fbe9,#fdf6d8);border:2px dashed #3fae57;border-radius:16px;padding:12px 14px;margin:0 0 12px;font-size:14.5px;line-height:1.45;color:#1f4d2a}
+html[data-theme=dark] .sch-joke{background:#15281a;color:#c9f2d2;border-color:#3fae57}
 .sch-chg{background:#fff1e6;border:2px solid #ff8a3d;border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:14px;color:#6b3410}
 .sch-chg b{display:block;margin-bottom:4px}.sch-chg ul{margin:0;padding-left:18px}.sch-chg li{margin:2px 0}
 .sch-chg-tag{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:#ff8a3d;color:#fff;font-size:11px;font-weight:700;vertical-align:middle}
@@ -6032,6 +6034,7 @@ const FULL = {"gen-1": {"pages": 21, "dir": "full/gen-1", "pdf": "pdf/full/gen-1
 // Шутки про учёбу: фраза дня на главной, реплики после теста и карточек, пустой поиск
 const JOKES = {
 home: [
+  'Микробиологию отменили, когда мы уже доехали. Инкубационный период пройден — симптомов знаний не выявлено.',
   'Сессия — это когда ДНК ещё реплицируется, а ты уже нет.',
   'Зубы мудрости режутся в 17–25 лет. Мудрость к сессии — не всегда.',
   'Митоз: из одной клетки две. Сессия: из одного студента — половинка.',
@@ -6105,7 +6108,8 @@ empty: [
 const SCHEDULE = {
   "monday": "2026-11-09",
   "times": {"1": ["8:30", "10:00"], "2": ["10:15", "11:45"], "3": ["12:00", "13:30"], "4": ["13:45", "15:15"], "5": ["15:25", "16:55"], "6": ["17:05", "18:35"], "7": ["18:45", "20:15"]},
-  "changes": ["Ср: микробиологии не будет — только история России (4 пара)", "Чт: только медгенетика — 1, 2 и 3 пары", "Пт: медгенетика 4 и 5 парами, микробиологии нет", "Сб: микробиологии не будет — пар нет"],
+  "changes": ["Вт: 1–2 пары микробиологии отменили (сегодня, в последний момент)", "Ср: микробиологии не будет — только история России (4 пара)", "Чт: только медгенетика — 1, 2 и 3 пары", "Пт: медгенетика 4 и 5 парами, микробиологии нет", "Сб: микробиологии не будет — пар нет"],
+  "dayNotes": {"1": "🦠 Микробиологию отменили, когда половина группы уже тряслась в автобусе, а вторая половина — уже в колледже. Зато лабораторная засчитана всем: «Посев студентов в общественный транспорт в 7 утра». Результат: рост колоний обнаружен, знаний не выявлено."},
   "days": [
     [
       {"n": 1, "subj": "Микробиология", "room": "401", "teacher": "Красавина А.А."},
@@ -6113,8 +6117,6 @@ const SCHEDULE = {
       {"n": 3, "subj": "История России", "room": "305", "teacher": "Беляев Д.М."}
     ],
     [
-      {"n": 1, "subj": "Микробиология", "room": "401", "teacher": "Красавина А.А."},
-      {"n": 2, "subj": "Микробиология", "room": "401", "teacher": "Красавина А.А."},
       {"n": 3, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."},
       {"n": 4, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."}
     ],
@@ -6334,6 +6336,7 @@ function viewSchedule(keep){
     const pairs = SCHEDULE.days[schedDay] || [], d = schedDate(schedDay), isToday = schedDay === today;
     const m = new Date().getHours()*60 + new Date().getMinutes();
     let html = `<div class="sch-dayhead"><h2>${DAY_FULL[schedDay]}</h2><span>${d.getDate()} ${MON_GEN[d.getMonth()]}${isToday ? ' · сегодня' : ''}</span></div>`;
+    if ((SCHEDULE.dayNotes||{})[schedDay]) html += `<div class="sch-joke">${esc(SCHEDULE.dayNotes[schedDay])}</div>`;
     if (!pairs.length) html += `<div class="sch-free"><div class="big">🎉</div><b>Пар нет</b><p>Можно выспаться. Или повторить конспект — решать тебе.</p></div>`;
     pairs.forEach((p, k) => {
       const [a, b] = SCHEDULE.times[p.n] || ['', ''], c = schedStyle(p.subj);
