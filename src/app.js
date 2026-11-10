@@ -1151,6 +1151,7 @@ document.addEventListener('click', e => {
 
 window.__printable = id => printableHTML(LEC[id]);
 window.__printableFull = id => printableFull(LEC[id]);
+window.__lec = id => LEC[id]; window.__blockHTML = b => blockHTML(b);
 window.__printableExam = (sid, mode) => printableExam(sid, mode||'full');
 window.__ask = (q,s) => answerSearch(q,s||'').map(r=>[r.sc.toFixed(2), r.it.l.id, r.it.kind, r.it.q]);
 if (!window.claude && 'serviceWorker' in navigator && location.protocol==='https:'){
