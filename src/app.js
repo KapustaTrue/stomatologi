@@ -517,6 +517,7 @@ function viewSubject(s){
       <div class="em">${s.emoji}</div><h1>${esc(s.name)}</h1>
       ${s.teacher ? `<p class="t">👤 Преподаватель: <b>${esc(s.teacher)}</b></p>` : ''}<p>${s.lectures.filter(l=>!l.soon).length || 'пока нет'} ${s.lectures.filter(l=>!l.soon).length?'лекц.':'лекций'}</p></div>
     ${typeof EXAM !== 'undefined' && EXAM[s.id] ? examEntry(s) : ''}
+    ${typeof TESTPDF !== 'undefined' && TESTPDF[s.id] ? TESTPDF[s.id].map(t=>`<button class="exam-entry" data-tfile="${esc(t.file)}|${esc(t.name)}" style="--c:${s.color};--ci:${s.ink};--cs:${s.soft}"><div class="ee-em">✅</div><div><b>${esc(t.title)}</b><span>${esc(t.sub)} · PDF</span></div><span class="chev">${I.chev}</span></button>`).join('') : ''}
     ${s.lectures.map(l => {
       if (l.soon) return `<div class="lec soon"><div class="n" style="background:${s.soft};color:${s.ink}">${l.num}</div><div><b>${esc(l.title)}</b><span>⏳ ${esc(l.sub)}</span></div></div>`;
       const p = progressOf(l);
@@ -1050,6 +1051,8 @@ document.addEventListener('click', e => {
     else if (a==='new'){ examOnlyNew = !examOnlyNew; exa.classList.toggle('on', examOnlyNew); renderExamList(SUBJ[sid]); }
     else if (a==='pdf' || a==='pdf-short'){ const sh = a==='pdf-short'; openFile(`pdf/exam-${sid}${sh?'-short':''}.pdf`, `${EXAM[sid].title}${sh?' — кратко':''}.pdf`); }
     return; }
+  const tf = e.target.closest('[data-tfile]');
+  if (tf){ const [u, n] = tf.dataset.tfile.split('|'); openFile(u, n); return; }
   const exo = e.target.closest('[data-exopen]');
   if (exo){ pendingExam = exo.dataset.exopen.split('|')[1]; examQ = ''; const sid = exo.dataset.exopen.split('|')[0]; examTab = pendingExam[0]==='t' ? 'theory' : 'practice'; go('exam-'+sid); return; }
   const qc = e.target.closest('[data-qsubj]');
