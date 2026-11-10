@@ -12,7 +12,17 @@ head = '''<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Зубрёжка">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="description" content="Конспекты, карточки и тесты группы С-201">'''
+<meta name="description" content="Конспекты, карточки и тесты группы С-201">
+<!-- Яндекс Метрика (счётчик 114172996): только на настоящем сайте, без Вебвизора; trackHash — каждая лекция/раздел считается отдельно -->
+<script>
+if (location.hostname === 'kapustatrue.github.io' && !navigator.webdriver) {
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();
+for (var j = 0; j < document.scripts.length; j++) { if (document.scripts[j].src === r) return; }
+k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
+ym(114172996, 'init', { clickmap: false, trackLinks: true, accurateTrackBounce: true, trackHash: true, webvisor: false });
+}
+</script>'''
 import hashlib
 ft = os.path.join(root, 'fulltext.json')
 ftver = hashlib.md5(open(ft, 'rb').read()).hexdigest()[:8] if os.path.exists(ft) else '0'

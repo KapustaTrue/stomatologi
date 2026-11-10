@@ -1051,6 +1051,10 @@ function route(){
   let secIdx = null;
   if (pendingSec!=null){ secIdx = pendingSec; pendingSec = null; }
   if (h !== 'raspisanie') { schedDay = null; if (app.onclick) app.onclick = null; }
+  // название вкладки — по разделу (его же видно в отчётах Метрики)
+  const T = ' · Зубрёжка', sj = h.startsWith('s-') && SUBJ[h.slice(2)], ex = h.startsWith('exam-') && typeof EXAM !== 'undefined' && EXAM[h.slice(5)];
+  document.title = h === 'otvet' ? 'Быстрый ответ' + T : h === 'raspisanie' ? 'Расписание' + T : sj ? sj.name + T
+    : ex ? ex.title + T : (LEC[h] && !LEC[h].soon) ? `${LEC[h].subject.short} ${LEC[h].num}. ${LEC[h].title}` + T : 'Зубрёжка · С-201';
   if (h === 'otvet') viewQuick();
   else if (h === 'raspisanie' && typeof SCHEDULE !== 'undefined') viewSchedule();
   else if (h.startsWith('s-') && SUBJ[h.slice(2)]) viewSubject(SUBJ[h.slice(2)]);
