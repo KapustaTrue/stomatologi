@@ -3,7 +3,7 @@ import os
 here = os.path.dirname(os.path.abspath(__file__)); root = os.path.dirname(here)
 r = lambda f: open(os.path.join(here, f), encoding='utf-8').read()
 t = r('app.html')
-data = "\n".join(r(f) for f in ['data_gen.js', 'svg_nurse.js', 'svg_nurse2.js', 'svg_gen5.js', 'data_nurse.js', 'data_other.js', 'data_oral.js', 'data_nurse_oral.js', 'data_exam.js', 'data_nurse_more.js', 'data_full.js', 'data_jokes.js'])
+data = "\n".join(r(f) for f in ['data_gen.js', 'svg_nurse.js', 'svg_nurse2.js', 'svg_gen5.js', 'svg_gen6.js', 'data_nurse.js', 'data_other.js', 'data_oral.js', 'data_nurse_oral.js', 'data_exam.js', 'data_nurse_more.js', 'data_full.js', 'data_jokes.js'])
 # расписание — общий файл для сайта и бота
 sch = os.path.join(root, 'schedule.json')
 if os.path.exists(sch): data += '\n// расписание из schedule.json\nconst SCHEDULE = ' + open(sch, encoding='utf-8').read().strip() + ';'
