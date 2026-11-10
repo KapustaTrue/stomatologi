@@ -204,7 +204,7 @@ function viewSchedule(keep){
       const prog = live ? Math.round((m - toMin(a)) / (toMin(b) - toMin(a)) * 100) : 0;
       html += `<${c.id ? `button data-go="s-${c.id}"` : 'div'} class="sch-pair${live ? ' live' : ''}${past ? ' past' : ''}" style="--c:${c.c};--ci:${c.ci};--cs:${c.cs}">
         <div class="sch-time"><b>${a}</b><span>${b}</span><i>${p.n} пара</i></div>
-        <div class="sch-body"><div class="sch-name"><span class="sch-em">${c.em}</span>${esc(p.subj)}</div>
+        <div class="sch-body"><div class="sch-name"><span class="sch-em">${c.em}</span>${esc(p.subj)}${p.chg ? '<span class="sch-chg-tag">замена</span>' : ''}</div>
           <div class="sch-meta"><span class="sch-room">ауд. ${esc(p.room)}</span><span>👤 ${esc(p.teacher)}</span></div>
           ${hwFor(isoD(d), p.n).map(h => `<div class="sch-hw"><span class="sch-hw-ic">📝</span><div><b>ДЗ:</b> ${esc(h.text)}${h.author ? `<small> — ${esc(h.author)}</small>` : ''}</div></div>`).join('')}
           ${live ? `<div class="sch-live"><span>● Идёт сейчас · осталось ${toMin(b) - m} мин</span><div class="sch-prog"><i style="width:${prog}%"></i></div></div>` : ''}
@@ -217,6 +217,7 @@ function viewSchedule(keep){
   app.innerHTML = `
     <div class="sch-head"><h1>📅 Расписание</h1><p>С-201 · неделя ${schedWeekLabel()}</p></div>
     ${old ? `<div class="sch-warn">⏳ Это расписание прошлой недели — новое ещё не добавили.</div>` : ''}
+    ${!old && (SCHEDULE.changes||[]).length ? `<div class="sch-chg"><b>⚠️ Изменения в расписании</b><ul>${SCHEDULE.changes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
     <div class="sch-tabs">${DAY_SHORT.map((n, i) => { const d = schedDate(i); const cnt = (SCHEDULE.days[i]||[]).length;
       return `<button class="sch-tab${i === today ? ' today' : ''}" data-sday="${i}"><b>${n}</b><span>${d.getDate()}</span><i>${cnt ? '•'.repeat(Math.min(cnt, 5)) : '—'}</i>${HW.some(it => { const t = hwTarget(it); return t && t.date === isoD(d); }) ? '<em class="sch-tab-hw">📝</em>' : ''}</button>`; }).join('')}</div>
     <div id="schday"></div>
@@ -449,7 +450,7 @@ function viewHome(){
       <h1>Зубрёжка</h1><p>Зубы у нас крепкие — гранит науки выдержат. Конспекты простыми словами, карточки и тесты.</p></div>
     <button class="joke" data-act="joke" aria-label="Другая шутка"><span class="jk-ic">😄</span><span class="jk-t">${esc(nextHomeJoke())}</span><span class="jk-dice">🎲</span></button>
     <button class="quick-btn" data-go="otvet"><span class="qi">⚡</span><div><b>Быстрый ответ</b><span>Для устного опроса: вбил вопрос — получил ответ</span></div><span class="chev">${I.chev}</span></button>
-    ${typeof SCHEDULE !== 'undefined' ? `<button class="sched-btn" data-go="raspisanie"><span class="sb-ic">📅</span><span class="sb-txt"><b>Расписание</b><span>${schedBtnText()}</span></span>${hwBadge()}${I.chev}</button>` : ''}
+    ${typeof SCHEDULE !== 'undefined' ? `<button class="sched-btn" data-go="raspisanie"><span class="sb-ic">📅</span><span class="sb-txt"><b>Расписание</b><span>${schedBtnText()}</span>${(SCHEDULE.changes||[]).length && !(schedNow()||{}).state?.startsWith?.('old') ? '<span class="sb-chg">⚠️ Изменения в расписании</span>' : ''}</span>${hwBadge()}${I.chev}</button>` : ''}
     <div class="search">${I.search}<input id="q" type="search" placeholder="Поиск по конспектам: «мейоз», «кодон»…" autocomplete="off"></div>
     <div id="results"></div>
     <div id="homeBody">
