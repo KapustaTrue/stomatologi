@@ -74,8 +74,6 @@ jobs:
             LOGIN_BOT_NAME=${{ env.LOGIN_BOT_NAME }}
             LOGIN_BOT_TOKEN=${{ secrets.LOGIN_BOT_TOKEN }}
             MAIN_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
-            SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-            ADMIN_IDS=${{ vars.ADMIN_IDS }}
 
       - name: Вебхук бота для входа
         env:
