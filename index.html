@@ -434,6 +434,11 @@ body.in-chat .fab-top{display:none}
 .who-add .primary{align-self:flex-start;height:44px}
 .who-h{margin:26px 2px 10px;font-size:17px}
 [data-who][hidden]{display:none}
+.sheet .os.step span{display:block;font-size:14px;color:var(--muted);margin:-2px 0 10px}
+.sheet .os.step ol{margin-bottom:12px}
+.join-go{text-decoration:none;box-sizing:border-box}
+.locked .join-go{display:inline-flex;width:auto;margin-top:2px}
+.locked .lk-j{margin:16px auto 6px}
 html[data-theme=dark] .lg-st.bad{background:rgba(224,82,122,.18);color:#ffb3c6}
 html[data-theme=dark] .msg-del{background:var(--card-solid)}
 html[data-theme=dark] .who-free{color:#f2c46b}
@@ -8161,6 +8166,8 @@ function openBug(spec){
 /* ===================== аккаунт: вход через Telegram, болталка, «Кто что отвечает», прогресс в облаке ===================== */
 // Сервер — облачная функция в Яндекс Облаке (server/index.py). Пустой API_URL — всё это скрыто, сайт работает как раньше.
 const API_URL = 'https://functions.yandexcloud.net/d4eeuhvidn98ijh1r9j6';
+const GROUP_LINK = ''.startsWith('https://t.me/') ? '' : ''; // приглашение в чат группы (src/group_link.txt)
+const joinBtn = (cls='secondary') => GROUP_LINK ? `<a class="${cls} bug-go join-go" href="${GROUP_LINK}" target="_blank" rel="noopener">👥 Вступить в чат группы</a>` : '';
 const SX = { on: /^https:\/\//.test(API_URL) || /^http:\/\/(localhost|127\.0\.0\.1)/.test(API_URL), tok: store.get('tok', ''), user: store.get('user', null) };
 const loggedIn = () => SX.on && !!SX.tok && !!SX.user;
 function api(a, data){
@@ -8186,7 +8193,7 @@ function accBtn(){
 function lockedHTML(title, text){
   return `<div class="locked"><div class="lk-em">🔒</div><h2>${esc(title)}</h2><p>${esc(text)}</p>
     <p class="lk-s">Это только для своих: войди через Telegram (нужно быть в чате группы С-201).</p>
-    <button class="primary" data-sx="login">✈️ Войти через Telegram</button></div>`;
+    <button class="primary" data-sx="login">✈️ Войти через Telegram</button>${GROUP_LINK ? `<p class="lk-s lk-j">Ещё не в чате группы?</p>${joinBtn('secondary')}` : ''}</div>`;
 }
 
 /* ---------- вход ---------- */
@@ -8197,8 +8204,9 @@ function openLogin(){
   LOGIN = {};
   openSheet(`<h3>🔑 Вход через Telegram</h3>
     <p class="bug-p">Вход — только для группы С-201. Пароль не нужен: подтверждаешь вход в боте «Зубрёжки».</p>
-    <div class="os"><b>Как войти</b><ol><li>Нажми кнопку ниже — откроется бот в Telegram.</li><li>Нажми <b>«Старт»</b> (или «Запустить»).</li><li>Вернись сюда — сайт сам тебя впустит.</li></ol></div>
-    <a id="lgGo" class="primary bug-go off" target="_blank" rel="noopener">⏳ Готовлю ссылку…</a>
+    ${GROUP_LINK ? `<div class="os step"><b>Шаг 1. Вступи в чат группы в Telegram</b><span>Если ты уже в чате С-201 — пропускай этот шаг.</span>${joinBtn()}</div>` : ''}
+    <div class="os step"><b>${GROUP_LINK ? 'Шаг 2. ' : ''}Войди на сайт</b><ol><li>Нажми кнопку ниже — откроется бот в Telegram.</li><li>Нажми <b>«Старт»</b> (или «Запустить»).</li><li>Вернись сюда — сайт сам тебя впустит.</li></ol>
+    <a id="lgGo" class="primary bug-go off" target="_blank" rel="noopener">⏳ Готовлю ссылку…</a></div>
     <div id="lgSt" class="lg-st" hidden></div>
     <div class="lg-perks"><b>Что откроется после входа</b><span>💬 Болталка группы</span><span>🙋 «Кто что отвечает» под каждой лекцией</span><span>☁️ Прогресс карточек и тестов — на всех устройствах</span></div>`);
   const L = LOGIN;
@@ -8209,6 +8217,9 @@ function openLogin(){
     a.addEventListener('click', () => { L.clicked = true; lgStatus('⏳ Жду подтверждения в Telegram… Нажми «Старт» в боте и вернись сюда.'); clearTimeout(L.tmr); L.tmr = setTimeout(lgPoll, 2500); });
   }).catch(() => lgStatus('📡 Не получилось связаться с сервером. Проверь интернет и открой окно входа ещё раз.', true));
 }
+function lgRetry(){ // после отказа — новая ссылка, чтобы войти, не закрывая окно
+  api('login_start').then(d => { const a = $('#lgGo'); if (!a || !LOGIN) return; LOGIN.code = d.code; LOGIN.clicked = false; a.href = `https://t.me/${d.bot}?start=${d.code}`; a.textContent = '✈️ Войти через Telegram ещё раз'; }).catch(() => {});
+}
 function lgStatus(t, bad){ const s = $('#lgSt'); if (!s) return; s.hidden = false; s.textContent = t; s.classList.toggle('bad', !!bad); }
 function lgPoll(){
   const L = LOGIN; if (!L || !L.code) return; clearTimeout(L.tmr);
@@ -8216,7 +8227,7 @@ function lgPoll(){
   api('login_check', { code: L.code }).then(d => {
     if (L !== LOGIN) return;
     if (d.st === 'ok') return sxLoggedIn(d.token, d.user);
-    if (d.st === 'denied') return lgStatus('🔒 Бот не нашёл тебя в чате группы С-201. Если ты из группы — попроси добавить тебя в чат и попробуй снова.', true);
+    if (d.st === 'denied'){ lgStatus(GROUP_LINK ? '🔒 Бот не нашёл тебя в чате группы. Сначала вступи в чат (шаг 1), потом нажми «Войти через Telegram» ещё раз.' : '🔒 Бот не нашёл тебя в чате группы С-201. Если ты из группы — попроси добавить тебя в чат и попробуй снова.', true); return lgRetry(); }
     if (d.st === 'expired') return lgStatus('⌛ Ссылка устарела — закрой окно и нажми «Войти» ещё раз.', true);
     L.tmr = setTimeout(lgPoll, 2000);
   }).catch(() => { if (L === LOGIN) L.tmr = setTimeout(lgPoll, 4000); });
