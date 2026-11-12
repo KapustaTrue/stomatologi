@@ -1,11 +1,12 @@
 # Уведомления в Telegram, когда расписание (или ДЗ) поменяли вручную и запушили в main.
 # ДЗ, записанное ботом из чата, рассылает сам бот домашки (его коммиты этот workflow не запускают).
 # «[тихо]» в сообщении коммита — ничего не рассылать.
-name: Уведомления (расписание)
+name: Уведомления
 on:
   push:
     branches: [main]
     paths: ['schedule.json', 'homework.json']
+  workflow_dispatch:   # Actions → «Уведомления» → Run workflow: пробное сообщение только админу
 permissions:
   contents: read
 concurrency:
@@ -13,17 +14,24 @@ concurrency:
   cancel-in-progress: false
 jobs:
   notify:
-    if: ${{ !contains(github.event.head_commit.message, '[тихо]') && github.event.before != '0000000000000000000000000000000000000000' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (!contains(github.event.head_commit.message, '[тихо]') && github.event.before != '0000000000000000000000000000000000000000') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Пробное сообщение админу
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          LOGIN_BOT_TOKEN: ${{ secrets.LOGIN_BOT_TOKEN }}
+        run: python3 bot/notify.py --test
       - name: Старые версии файлов
+        if: ${{ github.event_name == 'push' }}
         run: |
           for f in schedule homework; do
             curl -sSfL "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.event.before }}/$f.json" -o /tmp/old_$f.json || echo '{}' > /tmp/old_$f.json
           done
       - name: Разослать
+        if: ${{ github.event_name == 'push' }}
         env:
           LOGIN_BOT_TOKEN: ${{ secrets.LOGIN_BOT_TOKEN }}
         run: python3 bot/notify.py --old-sch /tmp/old_schedule.json --old-hw /tmp/old_homework.json

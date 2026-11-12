@@ -145,7 +145,7 @@ assert subs(False)[0] == 403
 st, r = subs(); assert st == 200
 U = {u['uid']: u for u in r['users']}
 assert set(U) == {1, 3, 4}, U                     # Петя (2) вышел из чата — ему не шлём
-assert U[1]['hw'] and U[1]['sch']
+assert U[1]['hw'] and U[1]['sch'] and U[3]['adm'] and not U[1]['adm']
 assert call({'a': 'notif_get', 't': masha})['nt'] == {'hw': True, 'sch': True}
 assert call({'a': 'notif_set', 't': masha, 'sch': False})['nt'] == {'hw': True, 'sch': False}
 assert call({'a': 'notif_get', 't': masha})['nt'] == {'hw': True, 'sch': False}

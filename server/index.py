@@ -96,7 +96,7 @@ def nt_targets(db):
         if uid not in mem: continue
         v = pref.get(f'nt:{uid}', '')
         p = nt_parse(v) if (v or pref.get(f'nt:{uid}:set')) else {k: True for k in NT_KINDS}
-        out.append(dict(uid=uid, name=u['name'], **p))
+        out.append(dict(uid=uid, name=u['name'], adm=is_admin(db, uid), **p))
     return out
 NT_HELP = ('🔔 <b>Уведомления «Зубрёжки»</b>\n\nПрисылаю сюда новое домашнее задание и изменения в расписании.\n\n'
            '/off — выключить всё\n/on — включить всё\n/hw — только ДЗ\n/sch — только расписание\n\n'

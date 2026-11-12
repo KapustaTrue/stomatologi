@@ -137,15 +137,15 @@ def tg_send(token, chat_id, text):
         return json.loads(r.read().decode())
 
 
-def broadcast(kind, text):
-    """kind: 'hw' | 'sch' — по какой настройке фильтровать."""
+def broadcast(kind, text, only_admins=False):
+    """kind: 'hw' | 'sch' — по какой настройке фильтровать; only_admins — пробная рассылка только админу."""
     if not text: return 0
     footer = '\n\n<i>Настроить уведомления — /notify</i>'
     if DRY:
         print(f'--- [{kind}] ---\n{text}{footer}\n', flush=True); return 0
     token = os.environ.get('LOGIN_BOT_TOKEN', '').strip()
     if not token: print('нет LOGIN_BOT_TOKEN — уведомления не отправлены', flush=True); return 0
-    users = [u for u in subscribers() if u.get(kind)]
+    users = [u for u in subscribers() if (u.get('adm') if only_admins else u.get(kind))]
     sent = 0
     for u in users:
         for attempt in range(2):
@@ -181,8 +181,14 @@ def notify_sch(old_sch, new_sch):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--old-sch'); ap.add_argument('--old-hw')
+    ap.add_argument('--test', action='store_true', help='пробное сообщение только админу')
     a = ap.parse_args()
     new_sch = load(os.path.join(ROOT, 'schedule.json'), {})
+    if a.test:
+        hw = load(os.path.join(ROOT, 'homework.json'), {'items': []}).get('items', [])
+        sample = hw_message([('new', hw[-1])], new_sch) if hw else '📌 <b>Новое ДЗ</b> · Пример'
+        sent = broadcast('hw', '🧪 <b>Проверка уведомлений</b> — так будет выглядеть сообщение:\n\n' + sample, only_admins=True)
+        sys.exit(0 if sent else 1)
     if a.old_sch:
         old = load(a.old_sch, None)
         if old is not None: notify_sch(old, new_sch)
