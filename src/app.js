@@ -11,6 +11,8 @@ const store = {
 
 /* ---------- index ---------- */
 const LEC = {}, SUBJ = {};
+// своя цветовая гамма у лекции: l.theme = {color, soft, ink}
+const lecSubj = l => l.theme ? Object.assign({}, l.subject, l.theme) : l.subject;
 SUBJECTS.forEach(s => { SUBJ[s.id] = s; s.lectures.forEach(l => { l.subject = s; LEC[l.id] = l; }); });
 const hashId = id => id.replace(/[^a-z0-9-]/gi,'');
 
@@ -677,9 +679,9 @@ function viewSubject(s){
     ${typeof TESTPDF !== 'undefined' && TESTPDF[s.id] ? TESTPDF[s.id].map(t=>`<button class="exam-entry" data-tfile="${esc(t.file)}|${esc(t.name)}" style="--c:${s.color};--ci:${s.ink};--cs:${s.soft}"><div class="ee-em">✅</div><div><b>${esc(t.title)}</b><span>${esc(t.sub)} · PDF</span></div><span class="chev">${I.chev}</span></button>`).join('') : ''}
     ${s.lectures.map(l => {
       if (l.soon) return `<div class="lec soon"><div class="n" style="background:${s.soft};color:${s.ink}">${l.num}</div><div><b>${esc(l.title)}</b><span>⏳ ${esc(l.sub)}</span></div></div>`;
-      const p = progressOf(l);
+      const p = progressOf(l), ls = lecSubj(l);
       return `<button class="lec" data-go="${hashId(l.id)}">
-        <div class="n" style="background:${s.soft};color:${s.ink}">${l.num}</div>
+        <div class="n" style="background:${ls.soft};color:${ls.ink}">${l.num}</div>
         <div><b>${esc(l.title)}</b><span>${esc(l.sub)}</span>
         <div class="prog" style="color:${s.ink}">${p.known?`<span>🃏 ${p.known}/${p.total}</span>`:''}${p.best!=null?`<span>✅ тест ${p.best}/${p.qn}</span>`:''}${loggedIn()?`<span data-who="${l.id}" hidden></span>`:''}</div></div>
         <span class="chev">${I.chev}</span></button>`;
@@ -789,7 +791,7 @@ ${part(E.theory,'theory','Теория')}${part(E.practice,'practice','Прак�
 
 let lecTab = 'notes';
 function viewLecture(l, secIdx){
-  const s = l.subject; setAccent(s);
+  const s = lecSubj(l); setAccent(s);
   store.set('last', l.id);
   topBar(s.short, 's-'+s.id, `<button class="icon-btn" data-go="otvet" aria-label="Быстрый ответ">⚡</button><button class="icon-btn" data-go="" aria-label="Главная">${I.home}</button>`);
   app.innerHTML = `
@@ -1005,7 +1007,7 @@ function renderQuiz(l, pane){
 
 /* ---------- printable export ---------- */
 function printableHTML(l){
-  const s = l.subject;
+  const s = lecSubj(l);
   return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(s.short)} — ${esc(l.title)}</title>
 <style>
@@ -1040,7 +1042,7 @@ ${(l.facts||[]).map(f=>blockHTML(['fact',f])).join('')}
 }
 
 function printableFull(l){
-  const s = l.subject, secs = l.sections.concat(l.more||[]);
+  const s = lecSubj(l), secs = l.sections.concat(l.more||[]);
   const nShort = l.sections.length;
   return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>${esc(s.short)} — ${esc(l.title)} (полная версия)</title><style>
 @page{size:A4;margin:14mm 14mm}
@@ -1653,6 +1655,7 @@ document.addEventListener('click', e => {
 });
 
 window.__printable = id => printableHTML(LEC[id]);
+window.__lecSubj = id => lecSubj(LEC[id]);
 window.__printableFull = id => printableFull(LEC[id]);
 window.__lec = id => LEC[id]; window.__blockHTML = b => blockHTML(b);
 window.__printableExam = (sid, mode) => printableExam(sid, mode||'full');

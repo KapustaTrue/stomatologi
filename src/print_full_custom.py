@@ -7,13 +7,14 @@ from playwright.async_api import async_playwright
 from PIL import Image
 
 LID, FULLJS, VAR = sys.argv[1], sys.argv[2], sys.argv[3]
+SRCNOTE = sys.argv[4] if len(sys.argv) > 4 else 'Текст лекции, рисунки из учебника и плакаты — материалы преподавателя. Схемы и блоки «Простыми словами» добавлены для понимания.'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get('CHROME', '/usr/bin/google-chrome')
 FONTS = ''.join(f"@font-face{{font-family:'Golos Text';font-weight:{w};src:url(fonts/golos-text-{s}-{w}-normal.woff2)}}" for w in (400, 500, 600, 700) for s in ('cyrillic', 'latin'))
 
 TEMPLATE = r"""
 (full) => {
-  const l = window.__lec(LID), s = l.subject, blockHTML = window.__blockHTML;
+  const l = window.__lec(LID), s = window.__lecSubj ? window.__lecSubj(LID) : l.subject, blockHTML = window.__blockHTML;
   const esc2 = x => String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const body = full.map(x => `<h2>${esc2(x.title)}</h2>${x.blocks.map(b => blockHTML(b).replace('class="tbl"','')).join('')}`).join('');
   return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>${esc2(s.short)} — ${esc2(l.title)} (полная версия)</title><style>
@@ -53,10 +54,10 @@ ${body}
 ${(l.facts||[]).map(f=>blockHTML(['fact',f])).join('')}
 <h2>🃏 Вопросы для самопроверки</h2><div class="cards">${l.cards.map(c=>`<div><b>${c[0]}</b><br>${c[1]}</div>`).join('')}</div>
 <h2>✅ Тест с ответами</h2><div class="quiz">${l.quiz.map((q,i)=>`<div><b>${i+1}. ${q.q}</b><br>Ответ: ${q.o[q.a]} — <span style="color:#6a6f82">${q.why}</span></div>`).join('')}</div>
-<div class="src">Текст лекции, рисунки из учебника и плакаты — материалы преподавателя. Схемы и блоки «Простыми словами» добавлены для понимания.</div>
+<div class="src">SRCNOTE</div>
 </body></html>`;
 }
-""".replace('FONTS', FONTS)
+""".replace('FONTS', FONTS).replace('SRCNOTE', SRCNOTE)
 
 async def main():
     full_js = open(os.path.join(ROOT, FULLJS), encoding='utf-8').read()
