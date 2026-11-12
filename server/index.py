@@ -306,6 +306,24 @@ def handler(event, context=None):
         if not setup_key() or not hmac.compare_digest(str(qs.get('setup')), setup_key()): return resp(403, {'err': 'Неверный ключ настройки'})
         return resp(200, do_setup(context, headers))
 
+    if qs.get('diag') is not None and method == 'GET':  # проверка связки с Telegram (без секретов)
+        out = {'bot_name': ENV('LOGIN_BOT_NAME', ''), 'has_login_token': bool(ENV('LOGIN_BOT_TOKEN')), 'has_main_token': bool(ENV('MAIN_BOT_TOKEN')), 'group_set': bool(ENV('GROUP_CHAT_ID'))}
+        try:
+            w = (tg_call(ENV('LOGIN_BOT_TOKEN', ''), 'getWebhookInfo').get('result') or {})
+            out['webhook'] = {k: w.get(k) for k in ('pending_update_count', 'last_error_date', 'last_error_message', 'max_connections')}
+            out['webhook']['url_ok'] = (w.get('url') or '').endswith('?tg=1')
+        except Exception as e:
+            out['telegram_error'] = repr(e)[:200]
+        if ENV('GROUP_CHAT_ID') and ENV('MAIN_BOT_TOKEN'):
+            try:
+                r = tg_call(ENV('MAIN_BOT_TOKEN'), 'getChat', chat_id=ENV('GROUP_CHAT_ID'))
+                out['group'] = (r.get('result') or {}).get('title')
+            except Exception as e:
+                out['group_error'] = repr(e)[:200]
+        try: get_db().code_get('x'); out['db'] = 'ok'
+        except Exception as e: out['db'] = repr(e)[:200]
+        return resp(200, out, ch)
+
     if method == 'GET':
         return resp(200, {'ok': True, 'service': 'zubrezhka-api'}, ch)
 
