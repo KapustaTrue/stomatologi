@@ -1,6 +1,7 @@
 # Локальная проверка сервера (SQLite вместо YDB, Telegram подменён): python3 server/test_server.py
 import os, sys, json, tempfile
 os.environ['DB_FILE'] = tempfile.mktemp(suffix='.sqlite')
+os.environ['YDB_ENDPOINT'] = ''          # тесты всегда на SQLite
 os.environ['LOGIN_BOT_TOKEN'] = '123:test'
 os.environ['GROUP_CHAT_ID'] = '-100'
 os.environ['SETUP_KEY'] = 'k'
