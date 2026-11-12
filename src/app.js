@@ -261,7 +261,7 @@ try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e =>
 function topBar(title, backHash, extra=''){
   extra = extra + themeBtn();
   topIn.innerHTML = backHash === null
-    ? `<div class="top-title" style="padding-left:4px">🦷 Зубрёжка</div>${extra}`
+    ? `<div class="top-title" style="padding-left:4px">Группа С-201</div>${extra}`
     : `<button class="back" aria-label="Назад" data-go="${backHash}">${I.back}</button><div class="top-title">${esc(title)}</div>${extra}`;
 }
 function toast(msg){
@@ -604,11 +604,10 @@ function viewHome(){
   const lecCount = s => s.lectures.filter(l=>!l.soon).length;
   const word = n => n%10===1&&n%100!==11?'лекция':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'лекции':'лекций';
   app.innerHTML = `
-    <div class="hero"><small>Группа С-201 · грызём гранит науки 🦷</small>
-      <h1>Зубрёжка</h1><p>Зубы у нас крепкие — гранит науки выдержат. Конспекты простыми словами, карточки и тесты.</p></div>
+    <div class="hero"><h1>Зубрёжка</h1></div>
     <button class="joke" data-act="joke" aria-label="Другая шутка"><span class="jk-ic">😄</span><span class="jk-t">${esc(nextHomeJoke())}</span><span class="jk-dice">🎲</span></button>
-    <button class="quick-btn" data-go="otvet"><span class="qi">⚡</span><div><b>Быстрый ответ</b><span>Для устного опроса: вбил вопрос — получил ответ</span></div><span class="chev">${I.chev}</span></button>
     ${typeof SCHEDULE !== 'undefined' ? `<button class="sched-btn" data-go="raspisanie"><span class="sb-ic">📅</span><span class="sb-txt"><b>Расписание</b><span>${schedBtnText()}</span>${(SCHEDULE.changes||[]).length && !(schedNow()||{}).state?.startsWith?.('old') ? '<span class="sb-chg">⚠️ Изменения в расписании</span>' : ''}</span>${hwBadge()}${I.chev}</button>` : ''}
+    <button class="quick-btn" data-go="otvet"><span class="qi">⚡</span><div><b>Быстрый ответ</b><span>Для устного опроса: вбил вопрос — получил ответ</span></div><span class="chev">${I.chev}</span></button>
     ${chatBtnHTML()}
     <div class="search">${I.search}<input id="q" type="search" placeholder="Поиск по конспектам: «мейоз», «кодон»…" autocomplete="off"></div>
     <div id="results"></div>
