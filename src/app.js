@@ -93,14 +93,32 @@ function blockHTML(b){
     case 'table': return `<div class="tbl"><table><thead><tr>${a.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${c.map(r=>`<tr>${r.map(d=>`<td>${d}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     case 'svg': return `<figure>${SVGS[a]||''}<figcaption>${c||''}</figcaption></figure>`;
     case 'img': return `<figure class="pic"><img src="${a}" loading="lazy" alt="${esc(c||'')}"><figcaption>${c||''}</figcaption></figure>`;
+    case 'video': return vidCard(a, c, b[3]);
   }
   return '';
+}
+// 🎬 видео: карточка → плеер на сайте (ВК / Rutube), рядом «Открыть в ВК»
+function vidEmbed(u){
+  let m = u.match(/vk\.(?:com|ru)\/video(-?\d+)_(\d+)/) || u.match(/vkvideo\.ru\/video(-?\d+)_(\d+)/);
+  if (m) return `https://vk.com/video_ext.php?oid=${m[1]}&id=${m[2]}&hd=2&autoplay=1`;
+  m = u.match(/rutube\.ru\/video\/([0-9a-f]+)/); if (m) return `https://rutube.ru/play/embed/${m[1]}`;
+  return '';
+}
+const vidSrc = u => /rutube/.test(u) ? 'Rutube' : 'ВКонтакте';
+function vidCard(u, title, note){
+  return `<a class="vid" href="${esc(u)}" target="_blank" rel="noopener" data-vid="${esc(u)}|${esc(title||'Видео')}"><span class="vid-pl">▶</span><span class="vid-t"><b>${esc(title||'Видео')}</b><small>🎬 ${esc(note || 'видео')} · ${vidSrc(u)}</small></span></a>`;
+}
+function openVideo(u, title){
+  const src = vidEmbed(u);
+  openSheet(`<h3>🎬 ${esc(title)}</h3>${src ? `<div class="vid-frame"><iframe src="${src}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen frameborder="0"></iframe></div>` : ''}
+    <a class="secondary bug-go" style="display:block;text-align:center;margin-top:12px" href="${esc(u)}" target="_blank" rel="noopener">Открыть в ${vidSrc(u)} ↗</a>
+    <p class="bug-p" style="margin-top:8px">Если видео не запускается здесь — открой его кнопкой выше.</p>`);
 }
 function blockText(b){
   const [t,a,c] = b;
   if (t==='ul'||t==='ol') return a.map(strip).join(' ');
   if (t==='table') return a.join(' ') + ' ' + c.map(r=>r.join(' ')).join(' ');
-  if (t==='svg' || t==='img') return c||'';
+  if (t==='svg' || t==='img' || t==='video') return c||'';
   return strip(a);
 }
 function setAccent(s){
@@ -677,6 +695,7 @@ function viewSubject(s){
       <div class="em">${s.emoji}</div><h1>${esc(s.name)}</h1>
       ${s.teacher ? `<p class="t">👤 Преподаватель: <b>${esc(s.teacher)}</b></p>` : ''}<p>${s.lectures.filter(l=>!l.soon).length || 'пока нет'} ${s.lectures.filter(l=>!l.soon).length?'лекц.':'лекций'}</p></div>
     ${typeof EXAM !== 'undefined' && EXAM[s.id] ? examEntry(s) : ''}
+    ${s.id === 'anatomy' && typeof ANAT_TASKS !== 'undefined' ? `<button class="exam-entry" data-go="zadaniya-anatomy" style="--c:${s.color};--ci:${s.ink};--cs:${s.soft}"><div class="ee-em">📋</div><div><b>Задания преподавателя</b><span>${ANAT_TASKS.length} заданий из чата · что сделать, видео, файлы</span></div><span class="chev">${I.chev}</span></button>` : ''}
     ${typeof TESTPDF !== 'undefined' && TESTPDF[s.id] ? TESTPDF[s.id].map(t=>`<button class="exam-entry" data-tfile="${esc(t.file)}|${esc(t.name)}" style="--c:${s.color};--ci:${s.ink};--cs:${s.soft}"><div class="ee-em">✅</div><div><b>${esc(t.title)}</b><span>${esc(t.sub)} · PDF</span></div><span class="chev">${I.chev}</span></button>`).join('') : ''}
     ${s.lectures.map(l => {
       if (l.soon) return `<div class="lec soon"><div class="n" style="background:${s.soft};color:${s.ink}">${l.num}</div><div><b>${esc(l.title)}</b><span>⏳ ${esc(l.sub)}</span></div></div>`;
@@ -690,6 +709,26 @@ function viewSubject(s){
   whoBadges();
 }
 
+
+/* ===== задания преподавателя (анатомия) ===== */
+const dShort = iso => { const d = new Date(iso + 'T12:00:00'); return `${d.getDate()} ${MON_GEN[d.getMonth()]}`; };
+function viewTasks(s){
+  setAccent(s);
+  topBar('Задания', '', '');
+  const T = ANAT_TASKS.slice().reverse();
+  app.innerHTML = `<div class="subj-head" style="background:linear-gradient(135deg, ${s.color}, ${s.ink})"><div class="em">📋</div><h1>Задания по анатомии</h1>
+    <p class="t">👤 ${esc(s.teacher)} · из чата группы</p><p>С 1 сентября · новые сверху</p></div>
+    <div class="tbl tasks-tbl"><table><thead><tr><th>Дата</th><th>Тема</th><th>Что сделать</th></tr></thead><tbody>
+    ${T.map(t => { const l = LEC[t.lec]; return `<tr><td class="td-d">${dShort(t.date)}</td><td><b>${esc(t.topic)}</b>${l && !l.soon ? `<br><a class="t-lec" data-go="${hashId(l.id)}">📖 Конспект →</a>` : ''}</td><td>${esc(t.todo)}</td></tr>`; }).join('')}
+    </tbody></table></div>
+    ${T.map(t => { const l = LEC[t.lec]; return `<section class="task-card"><div class="tc-h"><span class="tc-d">${dShort(t.date)}</span><b>${esc(t.topic)}</b></div>
+      <p>${esc(t.todo)}</p>
+      ${t.files && t.files.length ? `<p class="tc-f">📎 ${t.files.map(esc).join(' · ')} <small>(в чате группы)</small></p>` : ''}
+      ${(t.links || []).map(x => `<a class="tc-link" href="${esc(x[0])}" target="_blank" rel="noopener">📘 ${esc(x[1])} ↗</a>`).join('')}
+      <div class="tc-v">${t.videos.map(v => vidCard(v[0], v[1], 'видео от преподавателя')).join('')}</div>
+      ${l && !l.soon ? `<button class="primary" style="width:100%;margin-top:10px" data-go="${hashId(l.id)}">📖 Открыть конспект</button>` : l ? `<p class="tc-soon">⏳ Конспект по теме готовится</p>` : ''}
+    </section>`; }).join('')}`;
+}
 
 /* ===== вопросы к экзамену ===== */
 let examMode = store.get('examMode','full'), examQ = '', examTab = 'theory', examOnlyNew = false, pendingExam = null;
@@ -1598,13 +1637,14 @@ function route(){
   if (h !== 'raspisanie') { schedDay = null; if (app.onclick) app.onclick = null; }
   // название вкладки — по разделу (его же видно в отчётах Метрики)
   const T = ' · Зубрёжка', sj = h.startsWith('s-') && SUBJ[h.slice(2)], ex = h.startsWith('exam-') && typeof EXAM !== 'undefined' && EXAM[h.slice(5)];
-  document.title = h === 'otvet' ? 'Быстрый ответ' + T : h === 'raspisanie' ? 'Расписание' + T : h === 'chat' ? 'Болталка' + T : sj ? sj.name + T
+  document.title = h === 'zadaniya-anatomy' ? 'Задания по анатомии' + T : h === 'otvet' ? 'Быстрый ответ' + T : h === 'raspisanie' ? 'Расписание' + T : h === 'chat' ? 'Болталка' + T : sj ? sj.name + T
     : ex ? ex.title + T : (LEC[h] && !LEC[h].soon) ? `${LEC[h].subject.short} ${LEC[h].num}. ${LEC[h].title}` + T : 'Зубрёжка · С-201';
   if (h === 'otvet') viewQuick();
   else if (h === 'chat' && SX.on) viewChat();
   else if (h === 'raspisanie' && typeof SCHEDULE !== 'undefined') viewSchedule();
   else if (h.startsWith('s-') && SUBJ[h.slice(2)]) viewSubject(SUBJ[h.slice(2)]);
   else if (h.startsWith('exam-') && typeof EXAM !== 'undefined' && EXAM[h.slice(5)] && SUBJ[h.slice(5)]) viewExam(SUBJ[h.slice(5)]);
+  else if (h === 'zadaniya-anatomy' && typeof ANAT_TASKS !== 'undefined' && SUBJ.anatomy) viewTasks(SUBJ.anatomy);
   else if (LEC[h] && !LEC[h].soon) viewLecture(LEC[h], secIdx);
   else viewHome();
   if (secIdx==null || secIdx<0) window.scrollTo(0,0);
@@ -1671,6 +1711,8 @@ document.addEventListener('click', e => {
   const bg = e.target.closest('[data-bug]');
   if (bg){ e.preventDefault(); openBug(bg.dataset.bug); return; }
   if (e.target.closest('#bugGo')){ setTimeout(closeSheet, 400); return; }
+  const vd = e.target.closest('[data-vid]');
+  if (vd){ e.preventDefault(); const k = vd.dataset.vid.lastIndexOf('|'); openVideo(vd.dataset.vid.slice(0, k), vd.dataset.vid.slice(k + 1)); return; }
   const tf = e.target.closest('[data-tfile]');
   if (tf){ const [u, n] = tf.dataset.tfile.split('|'); openFile(u, n); return; }
   const exo = e.target.closest('[data-exopen]');

@@ -461,6 +461,21 @@ html[data-theme=dark] .who-intro{background:rgba(123,97,214,.2);color:#ddd3ff}
 .wq-ans summary::after{content:' ▾'}
 .wq-ans[open] summary::after{content:' ▴'}
 .wq-ans div{margin-top:6px;line-height:1.45;opacity:.9}
+
+/* видео и задания преподавателя */
+.vid{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 12px;margin:8px 0;text-decoration:none;color:var(--ink);box-shadow:var(--shadow)}
+.vid-pl{flex:none;width:44px;height:44px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center;font-size:17px;padding-left:3px}
+.vid-t b{display:block;font-size:15px;line-height:1.3}.vid-t small{color:var(--muted);font-size:12.5px}
+.vid-frame{position:relative;width:100%;padding-top:56.25%;border-radius:14px;overflow:hidden;background:#000;margin-top:10px}
+.vid-frame iframe{position:absolute;inset:0;width:100%;height:100%}
+.tasks-tbl td{vertical-align:top;font-size:13.5px;hyphens:none;-webkit-hyphens:none;word-break:normal;overflow-wrap:normal}.tasks-tbl td:nth-child(2){min-width:118px}.tasks-tbl td:nth-child(3){min-width:150px}.tasks-tbl .td-d{white-space:nowrap;font-weight:700;color:var(--acc-ink)}
+.t-lec{display:inline-block;margin-top:4px;color:var(--acc);font-weight:700;cursor:pointer;font-size:13px}
+.task-card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin:16px 0}
+.task-card .tc-h{display:flex;gap:10px;align-items:baseline;margin-bottom:6px}.task-card .tc-h b{font-size:16px;line-height:1.3}
+.task-card .tc-d{flex:none;background:var(--acc-soft);color:var(--acc-ink);border-radius:10px;padding:3px 9px;font-weight:800;font-size:13px}
+.task-card p{margin:6px 0}.tc-f{color:var(--muted);font-size:14px}.tc-soon{color:var(--muted);font-size:14px;text-align:center;margin-top:10px}
+.tc-link{display:block;margin:6px 0;color:var(--acc);font-weight:700;text-decoration:none}
+@media print{.vid{box-shadow:none;break-inside:avoid}}
 </style>
 </head>
 <body>
