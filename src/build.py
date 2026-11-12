@@ -26,7 +26,10 @@ ym(114172996, 'init', { clickmap: false, trackLinks: true, accurateTrackBounce: 
 import hashlib
 ft = os.path.join(root, 'fulltext.json')
 ftver = hashlib.md5(open(ft, 'rb').read()).hexdigest()[:8] if os.path.exists(ft) else '0'
-t = t.replace('/*DATA*/', data + "\nconst FT_VER = '" + ftver + "';").replace('/*APP*/', r('app.js')).replace('<!--SITEHEAD-->', head).replace('</style>', (r('theme.css') if os.path.exists(os.path.join(here, 'theme.css')) else '') + '\n</style>', 1)
+# адрес сервера (облачная функция в Яндекс Облаке) — из src/api_url.txt; пусто — вход/чат на сайте скрыты
+au = os.path.join(here, 'api_url.txt')
+api_url = open(au, encoding='utf-8').read().strip() if os.path.exists(au) else ''
+t = t.replace('/*DATA*/', data + "\nconst FT_VER = '" + ftver + "';").replace('/*APP*/', r('app.js').replace('/*API_URL*/', api_url)).replace('<!--SITEHEAD-->', head).replace('</style>', (r('theme.css') if os.path.exists(os.path.join(here, 'theme.css')) else '') + '\n</style>', 1)
 open(os.path.join(root, 'index.html'), 'w', encoding='utf-8').write(t)
 print('index.html собран')
 # справочник мест для бота «Нашёл ошибку» (bot/places.json); без node просто остаётся прежний

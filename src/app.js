@@ -595,7 +595,7 @@ document.addEventListener('visibilitychange', () => {
 /* ---------- views ---------- */
 function viewHome(){
   setAccent(null);
-  topBar('', null, `<button class="icon-btn" data-act="install">📲 На экран</button>`);
+  topBar('', null, `<button class="icon-btn" data-act="install" aria-label="Поставить на экран">📲${SX.on ? '' : ' На экран'}</button>` + accBtn());
   const last = LEC[store.get('last','')];
   const lecCount = s => s.lectures.filter(l=>!l.soon).length;
   const word = n => n%10===1&&n%100!==11?'лекция':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'лекции':'лекций';
@@ -605,6 +605,7 @@ function viewHome(){
     <button class="joke" data-act="joke" aria-label="Другая шутка"><span class="jk-ic">😄</span><span class="jk-t">${esc(nextHomeJoke())}</span><span class="jk-dice">🎲</span></button>
     <button class="quick-btn" data-go="otvet"><span class="qi">⚡</span><div><b>Быстрый ответ</b><span>Для устного опроса: вбил вопрос — получил ответ</span></div><span class="chev">${I.chev}</span></button>
     ${typeof SCHEDULE !== 'undefined' ? `<button class="sched-btn" data-go="raspisanie"><span class="sb-ic">📅</span><span class="sb-txt"><b>Расписание</b><span>${schedBtnText()}</span>${(SCHEDULE.changes||[]).length && !(schedNow()||{}).state?.startsWith?.('old') ? '<span class="sb-chg">⚠️ Изменения в расписании</span>' : ''}</span>${hwBadge()}${I.chev}</button>` : ''}
+    ${chatBtnHTML()}
     <div class="search">${I.search}<input id="q" type="search" placeholder="Поиск по конспектам: «мейоз», «кодон»…" autocomplete="off"></div>
     <div id="results"></div>
     <div id="homeBody">
@@ -626,6 +627,7 @@ function viewHome(){
   const q = $('#q');
   q.addEventListener('input', () => { loadFT(); doSearch(q.value); });
   if (sessionQ) { q.value = sessionQ; doSearch(sessionQ); }
+  chatPing();
 }
 let sessionQ = '';
 
@@ -679,9 +681,10 @@ function viewSubject(s){
       return `<button class="lec" data-go="${hashId(l.id)}">
         <div class="n" style="background:${s.soft};color:${s.ink}">${l.num}</div>
         <div><b>${esc(l.title)}</b><span>${esc(l.sub)}</span>
-        <div class="prog" style="color:${s.ink}">${p.known?`<span>🃏 ${p.known}/${p.total}</span>`:''}${p.best!=null?`<span>✅ тест ${p.best}/${p.qn}</span>`:''}</div></div>
+        <div class="prog" style="color:${s.ink}">${p.known?`<span>🃏 ${p.known}/${p.total}</span>`:''}${p.best!=null?`<span>✅ тест ${p.best}/${p.qn}</span>`:''}${loggedIn()?`<span data-who="${l.id}" hidden></span>`:''}</div></div>
         <span class="chev">${I.chev}</span></button>`;
     }).join('')}`;
+  whoBadges();
 }
 
 
@@ -792,10 +795,8 @@ function viewLecture(l, secIdx){
   app.innerHTML = `
     <div class="lec-head"><div class="kicker">${s.emoji} ${esc(s.short)} · лекция ${l.num}${l.date?' · '+l.date:''}</div>
       <h1>${esc(l.title)}</h1><p>${esc(l.sub)}</p>${s.teacher?`<p class="lt">👤 ${esc(s.teacher)}</p>`:''}</div>
-    <div class="tabs">
-      <button class="tab" data-tab="notes">📖 Конспект</button>
-      <button class="tab" data-tab="cards">🃏 Карточки</button>
-      <button class="tab" data-tab="quiz">✅ Тест</button>
+    <div class="tabs${SX.on ? ' four' : ''}">${[['notes','📖','Конспект'],['cards','🃏','Карточки'],['quiz','✅','Тест']].concat(SX.on ? [['who','🙋','Кто что']] : [])
+      .map(([k, e, t]) => `<button class="tab" data-tab="${k}">${SX.on ? `<span class="ti">${e}</span><span>${t}</span>` : e + ' ' + t}</button>`).join('')}
     </div>
     <div id="pane"></div>`;
   renderTab(l, secIdx);
@@ -803,8 +804,11 @@ function viewLecture(l, secIdx){
 function renderTab(l, secIdx){
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab===lecTab));
   const pane = $('#pane');
+  sxStop();
+  if (lecTab==='who' && !SX.on) lecTab = 'notes';
   if (lecTab==='notes') renderNotes(l, pane, secIdx);
   else if (lecTab==='cards') renderCards(l, pane);
+  else if (lecTab==='who') renderWho(l, pane);
   else renderQuiz(l, pane);
 }
 
@@ -1197,18 +1201,346 @@ function openBug(spec){
   else loadBotName().then(bugSyncLink);
 }
 
+/* ===================== аккаунт: вход через Telegram, болталка, «Кто что отвечает», прогресс в облаке ===================== */
+// Сервер — облачная функция в Яндекс Облаке (server/index.py). Пустой API_URL — всё это скрыто, сайт работает как раньше.
+const API_URL = '/*API_URL*/';
+const SX = { on: /^https:\/\//.test(API_URL) || /^http:\/\/(localhost|127\.0\.0\.1)/.test(API_URL), tok: store.get('tok', ''), user: store.get('user', null) };
+const loggedIn = () => SX.on && !!SX.tok && !!SX.user;
+function api(a, data){
+  return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ a }, SX.tok ? { t: SX.tok } : {}, data || {})) })
+    .then(r => r.json()).then(d => {
+      if (d && d.err === 'auth' && SX.tok) sxLogout(true);
+      if (d && d.err){ const e = new Error(d.msg || 'Ошибка'); e.code = d.err; throw e; }
+      return d;
+    });
+}
+const sxErr = e => toast(e && e.code ? (e.message || 'Ошибка') : '📡 Нет связи с сервером — проверь интернет');
+const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+const avaColor = uid => ['#7b61d6','#e0527a','#3f9e5c','#ef9a3a','#3d7fd9','#13a3b5','#c2456a','#6b4cff'][Math.abs(+uid || 0) % 8];
+const ava = (uid, name, cls='') => `<span class="ava ${cls}" style="background:${avaColor(uid)}">${esc(initials(name))}</span>`;
+const linkify = s => esc(s).replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]»"'])/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.length > 48 ? u.slice(0, 45) + '…' : u}</a>`).replace(/\n/g, '<br>');
+const firstName = n => String(n || '').split(/\s+/)[0];
+function accBtn(){
+  if (!SX.on) return '';
+  return loggedIn() ? `<button class="icon-btn acc-btn" data-sx="account" aria-label="Мой аккаунт">${ava(SX.user.uid, SX.user.name)}</button>`
+    : `<button class="icon-btn" data-sx="login">🔑 Войти</button>`;
+}
+function lockedHTML(title, text){
+  return `<div class="locked"><div class="lk-em">🔒</div><h2>${esc(title)}</h2><p>${esc(text)}</p>
+    <p class="lk-s">Это только для своих: войди через Telegram (нужно быть в чате группы С-201).</p>
+    <button class="primary" data-sx="login">✈️ Войти через Telegram</button></div>`;
+}
+
+/* ---------- вход ---------- */
+let LOGIN = null; // {code, bot, tmr, clicked}
+function openLogin(){
+  if (!SX.on) return;
+  if (LOGIN) clearTimeout(LOGIN.tmr);
+  LOGIN = {};
+  openSheet(`<h3>🔑 Вход через Telegram</h3>
+    <p class="bug-p">Вход — только для группы С-201. Пароль не нужен: подтверждаешь вход в боте «Зубрёжки».</p>
+    <div class="os"><b>Как войти</b><ol><li>Нажми кнопку ниже — откроется бот в Telegram.</li><li>Нажми <b>«Старт»</b> (или «Запустить»).</li><li>Вернись сюда — сайт сам тебя впустит.</li></ol></div>
+    <a id="lgGo" class="primary bug-go off" target="_blank" rel="noopener">⏳ Готовлю ссылку…</a>
+    <div id="lgSt" class="lg-st" hidden></div>
+    <div class="lg-perks"><b>Что откроется после входа</b><span>💬 Болталка группы</span><span>🙋 «Кто что отвечает» под каждой лекцией</span><span>☁️ Прогресс карточек и тестов — на всех устройствах</span></div>`);
+  const L = LOGIN;
+  api('login_start').then(d => {
+    const a = $('#lgGo'); if (!a || L !== LOGIN) return;
+    L.code = d.code;
+    a.href = `https://t.me/${d.bot}?start=${d.code}`; a.textContent = '✈️ Войти через Telegram'; a.classList.remove('off');
+    a.addEventListener('click', () => { L.clicked = true; lgStatus('⏳ Жду подтверждения в Telegram… Нажми «Старт» в боте и вернись сюда.'); clearTimeout(L.tmr); L.tmr = setTimeout(lgPoll, 2500); });
+  }).catch(() => lgStatus('📡 Не получилось связаться с сервером. Проверь интернет и открой окно входа ещё раз.', true));
+}
+function lgStatus(t, bad){ const s = $('#lgSt'); if (!s) return; s.hidden = false; s.textContent = t; s.classList.toggle('bad', !!bad); }
+function lgPoll(){
+  const L = LOGIN; if (!L || !L.code) return; clearTimeout(L.tmr);
+  if (!$('#lgGo')) { LOGIN = null; return; }   // окно закрыли
+  api('login_check', { code: L.code }).then(d => {
+    if (L !== LOGIN) return;
+    if (d.st === 'ok') return sxLoggedIn(d.token, d.user);
+    if (d.st === 'denied') return lgStatus('🔒 Бот не нашёл тебя в чате группы С-201. Если ты из группы — попроси добавить тебя в чат и попробуй снова.', true);
+    if (d.st === 'expired') return lgStatus('⌛ Ссылка устарела — закрой окно и нажми «Войти» ещё раз.', true);
+    L.tmr = setTimeout(lgPoll, 2000);
+  }).catch(() => { if (L === LOGIN) L.tmr = setTimeout(lgPoll, 4000); });
+}
+function sxLoggedIn(token, user){
+  SX.tok = token; SX.user = user; store.set('tok', token); store.set('user', user);
+  LOGIN = null; closeSheet();
+  toast(`Привет, ${firstName(user.name)}! 👋 Ты вошёл`);
+  progSync(true); route();
+}
+function sxLogout(silent){
+  SX.tok = ''; SX.user = null; store.set('tok', ''); store.set('user', null); store.set('progTs', 0);
+  sxStop(); closeSheet();
+  if (!silent) toast('Ты вышел из аккаунта'); else toast('Вход устарел — войди ещё раз');
+  route();
+}
+function openAccount(){
+  const u = SX.user;
+  openSheet(`<div class="acc-head">${ava(u.uid, u.name, 'big')}<div><h3>${esc(u.name)}</h3>${u.uname ? `<small>@${esc(u.uname)}</small>` : ''}${u.adm ? '<span class="adm-b">админ</span>' : ''}</div></div>
+    <div class="os"><b>☁️ Прогресс сохраняется в аккаунте</b><span class="acc-s">Карточки «знаю», лучшие результаты тестов и отметки в вопросах к экзамену — одинаковые на телефоне и компьютере.</span></div>
+    <button class="secondary" style="width:100%" data-sx="go-chat">💬 Болталка группы</button>
+    <button class="link-btn acc-out" data-sx="logout">Выйти из аккаунта</button>`);
+}
+
+/* ---------- прогресс в облаке ---------- */
+const SYNC_KEYS = ['known', 'best', 'examKnown'];
+const rawSet = store.set.bind(store);
+let progTmr = null;
+store.set = (k, v) => { rawSet(k, v); if (SYNC_KEYS.includes(k) && loggedIn()){ rawSet('progDirty', true); clearTimeout(progTmr); progTmr = setTimeout(progPush, 2500); } };
+const progLocal = () => { const o = {}; SYNC_KEYS.forEach(k => o[k] = store.get(k, {}) || {}); return o; };
+function progMerge(a, b){ // объединяем два устройства: «знаю» — объединение, тест — лучший результат
+  const out = { known: {}, best: {}, examKnown: {} };
+  [a, b].forEach(p => { if (!p) return;
+    Object.entries(p.known || {}).forEach(([k, arr]) => { out.known[k] = [...new Set([...(out.known[k] || []), ...(arr || [])])].sort((x, y) => x - y); });
+    Object.entries(p.best || {}).forEach(([k, v]) => { if (typeof v === 'number' && (out.best[k] == null || v > out.best[k])) out.best[k] = v; });
+    Object.entries(p.examKnown || {}).forEach(([s, m]) => { out.examKnown[s] = Object.assign(out.examKnown[s] || {}, m || {}); });
+  });
+  return out;
+}
+function progPush(){
+  if (!loggedIn()) return;
+  api('prog_put', { data: progLocal() }).then(r => { rawSet('progDirty', false); rawSet('progTs', r.ts); }).catch(() => {});
+}
+function progSync(first){
+  if (!loggedIn()) return;
+  api('prog_get').then(d => {
+    const local = progLocal(), dirty = store.get('progDirty', false), seen = store.get('progTs', 0);
+    let next;
+    if (!d.data) next = local;
+    else if (first || dirty || !seen) next = progMerge(local, d.data);
+    else if (d.ts !== seen) next = progMerge(d.data, null);      // поменяли на другом устройстве — берём оттуда
+    else return;
+    SYNC_KEYS.forEach(k => rawSet(k, next[k] || {}));
+    const same = d.data && JSON.stringify(progMerge(d.data, null)) === JSON.stringify(next);
+    if (same){ rawSet('progDirty', false); rawSet('progTs', d.ts); }
+    else api('prog_put', { data: next }).then(r => { rawSet('progDirty', false); rawSet('progTs', r.ts); }).catch(() => {});
+    if (JSON.stringify(next) !== JSON.stringify(local)){ const h = (location.hash || '').slice(1); if (!h || h.startsWith('s-')) route(); }
+  }).catch(() => {});
+}
+
+/* ---------- чат (болталка и обсуждения под лекциями) ---------- */
+const CHAT = { room: null, msgs: [], last: '', sig: '', tmr: null, gen: 0, idle: 0, full: 0, page: false };
+function sxStop(){ clearTimeout(CHAT.tmr); CHAT.gen++; CHAT.room = null; clearTimeout(WHO.tmr); WHO.gen++; WHO.lec = null; document.body.classList.remove('in-chat'); }
+function chatStart(room, page){ clearTimeout(CHAT.tmr); CHAT.gen++; Object.assign(CHAT, { room, page, msgs: [], last: '', sig: '', idle: 0, full: 0 }); chatLoad(true); }
+function chatLoad(full){
+  const g = CHAT.gen, room = CHAT.room; if (!room) return;
+  clearTimeout(CHAT.tmr);
+  const doFull = full || !CHAT.last || Date.now() - CHAT.full > 60000;
+  api('msgs', doFull ? { room } : { room, after: CHAT.last })
+    .then(d => { if (g === CHAT.gen){ chatMerge(d.msgs || [], doFull); if (doFull) CHAT.full = Date.now(); } })
+    .catch(e => { if (g === CHAT.gen && !CHAT.msgs.length){ const el = $('#chatList'); if (el && e.code !== 'auth') el.innerHTML = '<div class="empty">📡 Не получилось загрузить сообщения — попробую ещё раз…</div>'; } })
+    .finally(() => { if (g === CHAT.gen) chatSchedule(); });
+}
+function chatSchedule(){
+  clearTimeout(CHAT.tmr); const g = CHAT.gen;
+  const delay = document.visibilityState !== 'visible' ? 30000 : CHAT.idle < 15 ? 4000 : CHAT.idle < 40 ? 8000 : 15000;
+  CHAT.tmr = setTimeout(() => { if (g === CHAT.gen) chatLoad(false); }, delay);
+}
+function chatMerge(list, full){
+  if (full) CHAT.msgs = list.slice();
+  else { const have = new Set(CHAT.msgs.map(m => m.id)); list.forEach(m => { if (!have.has(m.id)) CHAT.msgs.push(m); }); }
+  CHAT.msgs.sort((a, b) => a.id < b.id ? -1 : 1);
+  const newest = CHAT.msgs.length ? CHAT.msgs[CHAT.msgs.length - 1].id : '';
+  const sig = CHAT.msgs.map(m => m.id + (m.del ? 'x' : '')).join(',');
+  CHAT.idle = newest !== CHAT.last ? 0 : CHAT.idle + 1;
+  CHAT.last = newest;
+  if (CHAT.room === 'general' && newest) rawSet('chatSeen', newest);
+  if (sig !== CHAT.sig){ CHAT.sig = sig; chatRender(); }
+}
+function dayLabel(d){
+  const t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
+  if (d.toDateString() === t.toDateString()) return 'Сегодня';
+  if (d.toDateString() === y.toDateString()) return 'Вчера';
+  return `${d.getDate()} ${MON_GEN[d.getMonth()]}${d.getFullYear() !== t.getFullYear() ? ' ' + d.getFullYear() : ''}`;
+}
+function msgHTML(m, prev){
+  const me = SX.user && m.uid === SX.user.uid, d = new Date(m.ts * 1000);
+  const sep = !prev || new Date(prev.ts * 1000).toDateString() !== d.toDateString() ? `<div class="msg-day"><span>${dayLabel(d)}</span></div>` : '';
+  const cont = !sep && prev && prev.uid === m.uid && !prev.del && m.ts - prev.ts < 300;
+  const time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  if (m.del) return sep + `<div class="msg gone${me ? ' mine' : ''}"><span class="ava-sp"></span><div class="bubble"><i>сообщение удалено</i></div></div>`;
+  const canDel = me || (SX.user && SX.user.adm);
+  return sep + `<div class="msg${me ? ' mine' : ''}${cont ? ' cont' : ''}"${canDel ? ` data-mid="${m.id}"` : ''}>
+    ${!me && !cont ? ava(m.uid, m.name) : '<span class="ava-sp"></span>'}
+    <div class="bubble">${!me && !cont ? `<b style="color:${avaColor(m.uid)}">${esc(m.name)}</b>` : ''}<span class="mt">${linkify(m.text)}</span><small>${time}</small>
+    ${canDel ? `<button class="msg-del" data-sx="mdel" data-mid="${m.id}">🗑 Удалить</button>` : ''}</div></div>`;
+}
+function chatRender(){
+  const el = $('#chatList'); if (!el) return;
+  const box = CHAT.page ? null : el;
+  const nearBottom = box ? box.scrollHeight - box.scrollTop - box.clientHeight < 120 : (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160);
+  const first = !el.querySelector('.msg');
+  el.innerHTML = CHAT.msgs.length ? CHAT.msgs.map((m, i) => msgHTML(m, CHAT.msgs[i - 1])).join('')
+    : `<div class="empty">${CHAT.room === 'general' ? 'Тут пока тихо. Напиши первым! 👋' : 'Пока никто ничего не писал. Спроси или подскажи что-нибудь по лекции 🙂'}</div>`;
+  if (first || nearBottom) chatToBottom();
+}
+function chatToBottom(){
+  const el = $('#chatList'); if (!el) return;
+  if (CHAT.page) requestAnimationFrame(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  else el.scrollTop = el.scrollHeight;
+}
+const composerHTML = kind => `<form class="composer${kind === 'chat' ? ' fixed' : ''}" data-sxform="send"><textarea rows="1" maxlength="1000" placeholder="${kind === 'chat' ? 'Сообщение…' : 'Написать по лекции…'}" enterkeyhint="send"></textarea><button type="submit" aria-label="Отправить">➤</button></form>`;
+function chatSend(form){
+  const ta = form.querySelector('textarea'), btn = form.querySelector('button'), text = ta.value.trim();
+  if (!text || !CHAT.room || btn.disabled) return;
+  btn.disabled = true; const g = CHAT.gen;
+  api('send', { room: CHAT.room, text, after: CHAT.last }).then(d => {
+    ta.value = ''; ta.style.height = '';
+    if (g === CHAT.gen){ chatMerge(d.msgs || [], false); chatToBottom(); CHAT.idle = 0; chatSchedule(); }
+  }).catch(sxErr).finally(() => { btn.disabled = false; ta.focus(); });
+}
+function viewChat(){
+  setAccent(null);
+  topBar('💬 Болталка группы', '', accBtn());
+  if (!loggedIn()){ app.innerHTML = lockedHTML('Болталка группы', 'Общий чат С-201 прямо на сайте: обсудить пары, домашку и всё подряд.'); return; }
+  document.body.classList.add('in-chat');
+  app.innerHTML = `<div class="chat-top">🔒 Видят только участники группы С-201</div><div id="chatList" class="chat-list page"><div class="empty">Загружаю сообщения…</div></div>${composerHTML('chat')}`;
+  chatStart('general', true);
+}
+
+/* ---------- «Кто что отвечает» под лекцией ---------- */
+const WHO = { lec: null, qs: [], tmr: null, gen: 0, sig: '' };
+let WHOSUM = { at: 0, data: null };
+function renderWho(l, pane){
+  if (!loggedIn()){ pane.innerHTML = lockedHTML('Кто что отвечает', 'Препод назвал вопросы к опросу? Добавьте их сюда и разберите: каждый берёт свой вопрос, и сразу видно, что осталось свободным.'); return; }
+  pane.innerHTML = `<div class="who-intro"><b>🙋 Кто что отвечает</b><span>Препод назвал вопросы к опросу? Добавь их сюда и нажми <b>«Беру»</b> на своём — все видят, кто что готовит и что ещё свободно.</span></div>
+    <div id="whoSum" class="who-sum"></div>
+    <div id="whoList"><div class="empty">Загружаю…</div></div>
+    <form class="who-add" data-sxform="q"><textarea rows="3" maxlength="8000" placeholder="Вопросы преподавателя — можно сразу списком, каждый с новой строки"></textarea><button class="primary" type="submit">➕ Добавить</button></form>
+    <h3 class="who-h">💬 Обсуждение лекции</h3>
+    <div id="chatList" class="chat-list box"><div class="empty">Загружаю…</div></div>
+    ${composerHTML('lec')}`;
+  clearTimeout(WHO.tmr); WHO.gen++; Object.assign(WHO, { lec: l.id, qs: [], sig: '' });
+  whoLoad(); chatStart('lec:' + l.id, false);
+}
+function whoLoad(){
+  const g = WHO.gen, lec = WHO.lec; if (!lec) return;
+  clearTimeout(WHO.tmr);
+  api('qs', { lec }).then(d => { if (g === WHO.gen) whoSet(d.qs); })
+    .catch(() => { if (g === WHO.gen && !WHO.qs.length){ const el = $('#whoList'); if (el) el.innerHTML = '<div class="empty">📡 Не получилось загрузить — попробую ещё раз…</div>'; } })
+    .finally(() => { if (g === WHO.gen) WHO.tmr = setTimeout(whoLoad, document.visibilityState === 'visible' ? 15000 : 45000); });
+}
+function whoSet(qs){
+  WHO.qs = qs || []; WHOSUM.at = 0;
+  const sig = JSON.stringify(WHO.qs);
+  if (sig !== WHO.sig){ WHO.sig = sig; whoRender(); }
+}
+function whoRender(){
+  const list = $('#whoList'), sum = $('#whoSum'); if (!list) return;
+  const qs = WHO.qs, me = SX.user.uid;
+  const free = qs.filter(q => !q.who.length).length, mine = qs.filter(q => q.who.some(w => w.uid === me)).length;
+  sum.innerHTML = qs.length ? `<span>Вопросов <b>${qs.length}</b></span><span>Свободно <b>${free}</b></span><span>Мои <b>${mine}</b></span><button class="chip" data-sx="who-copy">📋 Список для чата</button>` : '';
+  list.innerHTML = qs.length ? qs.map((q, i) => {
+    const took = q.who.some(w => w.uid === me), canDel = q.uid === me || SX.user.adm;
+    return `<div class="wq${took ? ' mine' : ''}${q.who.length ? '' : ' free'}">
+      <div class="wq-n">${i + 1}</div>
+      <div class="wq-b"><div class="wq-t">${linkify(q.text)}</div>
+        <div class="wq-who">${q.who.length ? q.who.map(w => `<span class="who-chip${w.uid === me ? ' me' : ''}">${ava(w.uid, w.name, 's')}${esc(w.uid === me ? 'Я' : w.name)}</span>`).join('') : '<span class="who-free">свободен — никто не взял</span>'}</div>
+        <div class="wq-act"><button class="wq-claim${took ? ' on' : ''}" data-sx="claim" data-qid="${q.id}" data-on="${took ? 0 : 1}">${took ? '✓ Мой — отказаться' : '✋ Беру'}</button>
+        ${canDel ? `<button class="wq-del" data-sx="qdel" data-qid="${q.id}" aria-label="Удалить вопрос">🗑</button>` : ''}</div>
+      </div></div>`;
+  }).join('') : '<div class="empty">Пока пусто. Добавь вопросы, которые назвал преподаватель 👇</div>';
+}
+function whoAdd(form){
+  const ta = form.querySelector('textarea'), btn = form.querySelector('button');
+  const texts = ta.value.split('\n').map(s => s.replace(/^\s*(\d{1,3}\s*[.)]|[-–—•*])\s*/, '').trim()).filter(Boolean);
+  if (!texts.length || btn.disabled) return;
+  btn.disabled = true; const g = WHO.gen;
+  api('q_add', { lec: WHO.lec, texts }).then(d => { ta.value = ''; if (g === WHO.gen) whoSet(d.qs); toast(d.added > 1 ? `Добавлено вопросов: ${d.added}` : 'Вопрос добавлен'); })
+    .catch(sxErr).finally(() => { btn.disabled = false; });
+}
+function whoCopy(){
+  const l = LEC[WHO.lec]; if (!l) return;
+  const txt = `🙋 Кто что отвечает · ${l.subject.short}, лекция ${l.num}\n` + WHO.qs.map((q, i) => `${i + 1}. ${q.text} — ${q.who.length ? q.who.map(w => w.name).join(', ') : 'свободен'}`).join('\n');
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('📋 Список скопирован — вставь в чат группы'), () => toast('Не получилось скопировать'));
+}
+function whoBadges(){ // значки «🙋 занято/всего» в списке лекций предмета
+  if (!loggedIn() || !document.querySelector('[data-who]')) return;
+  const fill = s => document.querySelectorAll('[data-who]').forEach(el => { const v = s[el.dataset.who]; el.textContent = v ? `🙋 ${v[1]}/${v[0]}` : ''; el.hidden = !v; });
+  if (WHOSUM.data && Date.now() - WHOSUM.at < 60000) return fill(WHOSUM.data);
+  api('q_sum').then(d => { WHOSUM = { at: Date.now(), data: d.sum || {} }; fill(WHOSUM.data); }).catch(() => {});
+}
+
+/* ---------- главная: кнопка болталки ---------- */
+function chatBtnHTML(){
+  if (!SX.on) return '';
+  return `<button class="chat-btn" data-go="chat"><span class="sb-ic">💬</span><span class="sb-txt"><b>Болталка группы</b><span id="chatPrev">${loggedIn() ? 'Общий чат С-201' : '🔒 Войди через Telegram — и пиши в общий чат'}</span></span><span id="chatNew" class="chat-new" hidden>новое</span>${I.chev}</button>`;
+}
+function chatPing(){
+  if (!loggedIn() || !$('#chatPrev')) return;
+  api('ping').then(d => {
+    const p = $('#chatPrev'), n = $('#chatNew'); if (!p || !d.last) return;
+    p.textContent = d.last.text ? `${firstName(d.last.name)}: ${d.last.text}` : 'Общий чат С-201';
+    if (n) n.hidden = !(d.last.id > store.get('chatSeen', ''));
+  }).catch(() => {});
+}
+
+/* ---------- клики и формы ---------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-sx]');
+  if (!t){ // нажали на своё сообщение — показать «Удалить»
+    const m = e.target.closest('.msg[data-mid]');
+    if (m && !e.target.closest('a')){ document.querySelectorAll('.msg.sel').forEach(x => { if (x !== m) x.classList.remove('sel'); }); m.classList.toggle('sel'); }
+    return;
+  }
+  const a = t.dataset.sx;
+  if (a === 'login') openLogin();
+  else if (a === 'account') openAccount();
+  else if (a === 'logout') sxLogout(false);
+  else if (a === 'go-chat'){ closeSheet(); go('chat'); }
+  else if (a === 'who-copy') whoCopy();
+  else if (a === 'claim'){
+    t.disabled = true; const g = WHO.gen;
+    api('q_claim', { lec: WHO.lec, qid: t.dataset.qid, on: t.dataset.on === '1' }).then(d => { if (g === WHO.gen) whoSet(d.qs); if (t.dataset.on === '1') toast('✋ Вопрос твой — удачи!'); })
+      .catch(e => { sxErr(e); whoLoad(); }).finally(() => { t.disabled = false; });
+  }
+  else if (a === 'qdel'){
+    if (!t.classList.contains('sure')){ t.classList.add('sure'); t.textContent = 'Удалить?'; setTimeout(() => { if (t.isConnected){ t.classList.remove('sure'); t.textContent = '🗑'; } }, 3000); return; }
+    const g = WHO.gen;
+    api('q_del', { lec: WHO.lec, qid: t.dataset.qid }).then(d => { if (g === WHO.gen) whoSet(d.qs); toast('Вопрос удалён'); }).catch(sxErr);
+  }
+  else if (a === 'mdel'){
+    e.stopPropagation();
+    if (!t.classList.contains('sure')){ t.classList.add('sure'); t.textContent = 'Точно удалить?'; return; }
+    const g = CHAT.gen, id = t.dataset.mid;
+    api('del_msg', { room: CHAT.room, id }).then(() => { if (g !== CHAT.gen) return; const m = CHAT.msgs.find(x => x.id === id); if (m){ m.del = true; m.text = ''; } CHAT.sig = ''; chatMerge([], false); }).catch(sxErr);
+  }
+});
+document.addEventListener('submit', e => {
+  const f = e.target.closest('form[data-sxform]'); if (!f) return;
+  e.preventDefault();
+  if (f.dataset.sxform === 'send') chatSend(f); else if (f.dataset.sxform === 'q') whoAdd(f);
+});
+document.addEventListener('keydown', e => { // Enter — отправить (на компьютере), Shift+Enter — новая строка
+  const ta = e.target.closest && e.target.closest('form[data-sxform="send"] textarea');
+  if (ta && e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer: coarse)').matches){ e.preventDefault(); chatSend(ta.form); }
+});
+document.addEventListener('input', e => { // поле сообщения растёт по тексту
+  const ta = e.target.closest && e.target.closest('form.composer textarea');
+  if (ta){ ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 140) + 'px'; }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (LOGIN && LOGIN.clicked) lgPoll();
+  if (CHAT.room) chatLoad(false);
+  if (WHO.lec) whoLoad();
+});
+
 /* ---------- routing ---------- */
 function route(){
-  closeSheet();
+  closeSheet(); sxStop();
   const h = (location.hash||'').slice(1);
   let secIdx = null;
   if (pendingSec!=null){ secIdx = pendingSec; pendingSec = null; }
   if (h !== 'raspisanie') { schedDay = null; if (app.onclick) app.onclick = null; }
   // название вкладки — по разделу (его же видно в отчётах Метрики)
   const T = ' · Зубрёжка', sj = h.startsWith('s-') && SUBJ[h.slice(2)], ex = h.startsWith('exam-') && typeof EXAM !== 'undefined' && EXAM[h.slice(5)];
-  document.title = h === 'otvet' ? 'Быстрый ответ' + T : h === 'raspisanie' ? 'Расписание' + T : sj ? sj.name + T
+  document.title = h === 'otvet' ? 'Быстрый ответ' + T : h === 'raspisanie' ? 'Расписание' + T : h === 'chat' ? 'Болталка' + T : sj ? sj.name + T
     : ex ? ex.title + T : (LEC[h] && !LEC[h].soon) ? `${LEC[h].subject.short} ${LEC[h].num}. ${LEC[h].title}` + T : 'Зубрёжка · С-201';
   if (h === 'otvet') viewQuick();
+  else if (h === 'chat' && SX.on) viewChat();
   else if (h === 'raspisanie' && typeof SCHEDULE !== 'undefined') viewSchedule();
   else if (h.startsWith('s-') && SUBJ[h.slice(2)]) viewSubject(SUBJ[h.slice(2)]);
   else if (h.startsWith('exam-') && typeof EXAM !== 'undefined' && EXAM[h.slice(5)] && SUBJ[h.slice(5)]) viewExam(SUBJ[h.slice(5)]);
@@ -1329,6 +1661,7 @@ if (!window.claude && 'serviceWorker' in navigator && location.protocol==='https
 }
 route();
 setTimeout(loadFT, 2500);
+if (loggedIn()) setTimeout(() => progSync(false), 800);
 if (typeof SCHEDULE !== 'undefined') loadHW();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && typeof SCHEDULE !== 'undefined') loadHW(); });
 })();
