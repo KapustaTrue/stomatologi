@@ -76,6 +76,35 @@ def full_name(u):
 # кто там пишет и кто вступает/выходит. Отвечаем только в теле ответа на вебхук.
 def is_admin(db, uid): return uid in admin_ids() or str(uid) == db.cfg_get('admin')
 
+# ---------- уведомления в Telegram (ДЗ, расписание) ----------
+# Рассылает bot/notify.py из GitHub Actions (из Облака Telegram недоступен), сервер хранит только настройки.
+# По умолчанию всё включено; настройка — в cfg под ключом 'nt:<uid>': 'hw,sch' / 'hw' / 'sch' / ''.
+NT_KINDS = ('hw', 'sch')
+def nt_parse(v): return {k: k in str(v).split(',') for k in NT_KINDS}
+def nt_get(db, uid):
+    v = db.cfg_get(f'nt:{uid}')
+    return nt_parse(v) if v or db.cfg_get(f'nt:{uid}:set') else {k: True for k in NT_KINDS}
+def nt_set(db, uid, prefs):
+    db.cfg_set(f'nt:{uid}', ','.join(k for k in NT_KINDS if prefs.get(k))); db.cfg_set(f'nt:{uid}:set', '1')
+def nt_targets(db):
+    """Кому слать: вошли на сайт и сейчас в чате группы (или админы из ADMIN_IDS)."""
+    mem = set(db.members_all()) | admin_ids()
+    pref = db.cfg_prefix('nt:')
+    out = []
+    for u in db.users_all():
+        uid = int(u['uid'])
+        if uid not in mem: continue
+        v = pref.get(f'nt:{uid}', '')
+        p = nt_parse(v) if (v or pref.get(f'nt:{uid}:set')) else {k: True for k in NT_KINDS}
+        out.append(dict(uid=uid, name=u['name'], **p))
+    return out
+NT_HELP = ('🔔 <b>Уведомления «Зубрёжки»</b>\n\nПрисылаю сюда новое домашнее задание и изменения в расписании.\n\n'
+           '/off — выключить всё\n/on — включить всё\n/hw — только ДЗ\n/sch — только расписание\n\n'
+           'Это же можно настроить на сайте: аватарка в шапке → «Уведомления».')
+def nt_status(p):
+    on = [t for k, t in (('hw', '📌 домашка'), ('sch', '📅 расписание')) if p[k]]
+    return 'Сейчас включено: ' + ', '.join(on) + '.' if on else 'Сейчас уведомления выключены. Включить — /on'
+
 def handle_group(db, msg, chat):
     gid = db.cfg_get('group'); cid = str(chat['id'])
     me = (ENV('LOGIN_BOT_NAME', '') or '').lower()
@@ -114,9 +143,16 @@ def handle_tg(update):
     if chat.get('type') != 'private' or not msg.get('from'): return None
     u = msg['from']; uid = int(u['id']); text = (msg.get('text') or '').strip()
     reply = lambda t: {'method': 'sendMessage', 'chat_id': chat['id'], 'text': t, 'parse_mode': 'HTML', 'disable_web_page_preview': True}
+    cmd = re.match(r'^/(on|off|stop|hw|sch|notify|help)(?:@\w+)?$', text)
+    if cmd:
+        c = cmd.group(1)
+        if c in ('notify', 'help'): return reply(NT_HELP + '\n\n' + nt_status(nt_get(db, uid)))
+        prefs = {'on': {'hw': True, 'sch': True}, 'off': {}, 'stop': {}, 'hw': {'hw': True}, 'sch': {'sch': True}}[c]
+        nt_set(db, uid, prefs)
+        return reply(('🔕 Готово, уведомления выключены. Включить снова — /on' if not prefs else '🔔 Готово! ' + nt_status(nt_get(db, uid))))
     m = re.match(r'^/start(?:@\w+)?\s+([A-Za-z0-9_-]{8,64})$', text)
     if not m:
-        return reply(f'👋 Это бот для входа на сайт «Зубрёжка».\n\nОткрой сайт → нажми <b>«Войти»</b> → кнопку <b>«Войти через Telegram»</b>, и я тебя пущу.\n\n{SITE}')
+        return reply(f'👋 Это бот для входа на сайт «Зубрёжка».\n\nОткрой сайт → нажми <b>«Войти»</b> → кнопку <b>«Войти через Telegram»</b>, и я тебя пущу.\n\n{SITE}\n\n🔔 Уведомления о ДЗ и расписании — /notify')
     code = m.group(1)
     row = db.code_get(code)
     if not row or row['ts'] < now() - CODE_TTL:
@@ -130,7 +166,7 @@ def handle_tg(update):
         db.code_set(code, uid, name, uname, 'notseen', False)
         return reply('👀 Почти готово! Я пока не видел тебя в чате группы С-201.\n\n<b>Напиши любое сообщение в чат группы</b> (например, «я с сайта 👋») — и сайт сам тебя впустит, нажимать ничего не нужно.\n\nЕщё не в чате? Вступи по кнопке на сайте.')
     db.code_set(code, uid, name, uname, 'ok', is_admin(db, uid))
-    return reply(f'✅ Готово, {name}! Вход подтверждён.\n\nВозвращайся на сайт «Зубрёжка» — он уже пускает тебя. 🦷\n\n<i>Если ты не нажимал «Войти» на сайте — просто проигнорируй это сообщение.</i>')
+    return reply(f'✅ Готово, {name}! Вход подтверждён.\n\nВозвращайся на сайт «Зубрёжка» — он уже пускает тебя. 🦷\n\n🔔 Ещё я буду присылать сюда новое ДЗ и изменения в расписании. Выключить — /off, настройки — /notify\n\n<i>Если ты не нажимал «Войти» на сайте — просто проигнорируй это сообщение.</i>')
 
 
 # ---------- API сайта ----------
@@ -263,6 +299,16 @@ def api(d):
             out.setdefault(r['lec'], [0, 0])[1] = int(r['n'])
         return {'sum': out}
 
+    if a == 'notif_get':
+        return {'nt': nt_get(db, uid)}
+
+    if a == 'notif_set':
+        cur = nt_get(db, uid)
+        for k in NT_KINDS:
+            if k in d: cur[k] = bool(d.get(k))
+        nt_set(db, uid, cur)
+        return {'nt': cur}
+
     if a == 'prog_get':
         r = db.prog_get(uid)
         return {'data': json.loads(r['js']) if r else None, 'ts': int(r['ts']) if r else 0}
@@ -332,6 +378,9 @@ def handler(event, context=None):
         try: get_db().cfg_set('last_hook', f'{now()} secret={"ok" if ok else ("bad" if got else "none")}')
         except Exception as e: print('last_hook', repr(e))
         if not ok: return resp(403, {'err': 'forbidden'})
+        if qs.get('subs'):  # bot/notify.py спрашивает, кому слать уведомления
+            try: return resp(200, {'users': nt_targets(get_db())})
+            except Exception as e: print('subs', repr(e)); return resp(500, {'err': 'server'})
         if qs.get('ava'):   # мост присылает фото профиля: {uid, img: base64 jpeg | ''}
             try:
                 d = json.loads(body or '{}'); img = str(d.get('img') or '')

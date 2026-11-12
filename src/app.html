@@ -336,6 +336,13 @@ html.vw-open .tts{display:none}
 .adm-b{display:inline-block;margin-left:8px;font-size:11px;font-weight:800;color:#fff;background:var(--acc);border-radius:8px;padding:2px 7px;vertical-align:middle}
 .acc-s{font-size:14px;color:var(--muted)}
 .acc-out{display:block;width:100%;margin-top:10px;color:#d23b5c}
+.nt-box .acc-s{display:block;margin-bottom:6px}
+.nt-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;font-size:15px;font-weight:600;cursor:pointer;border-top:1px solid var(--line, rgba(127,127,127,.15))}
+.nt-sw{appearance:none;-webkit-appearance:none;flex:none;width:46px;height:28px;border-radius:14px;background:rgba(127,127,127,.35);position:relative;cursor:pointer;transition:background .2s;margin:0}
+.nt-sw::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.nt-sw:checked{background:var(--acc)}
+.nt-sw:checked::after{transform:translateX(18px)}
+.nt-sw:disabled{opacity:.5}
 .bug-go.off{opacity:.6;pointer-events:none}
 .lg-st{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--acc-soft);color:var(--acc-ink);font-weight:600;font-size:14px}
 .lg-st.bad{background:#fdecef;color:#a12b4a}

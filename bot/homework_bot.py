@@ -361,7 +361,13 @@ if __name__ == '__main__':
             print('getUpdates не удался, попробую в следующий раз:', e); break
         if not ups: continue
         total += len(ups)
-        if run(ups): git_push()
+        hw_before = load(F_HW, {'items': []})
+        if run(ups):
+            git_push()
+            try:   # уведомления в Telegram тем, кто вошёл на сайт (bot/notify.py, бот входа)
+                import notify
+                notify.notify_hw(hw_before, load(F_HW, {'items': []}), load(F_SCH, {}))
+            except Exception as e: print('уведомления не отправлены:', repr(e)[:200])
         offset = ups[-1]['update_id'] + 1
     if offset:
         try: tg('getUpdates', offset=offset, timeout=0, limit=1)

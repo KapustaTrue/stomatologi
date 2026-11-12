@@ -19,3 +19,4 @@ jobs:
         run: python3 bot/homework_bot.py
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          LOGIN_BOT_TOKEN: ${{ secrets.LOGIN_BOT_TOKEN }}   # уведомления о новом ДЗ (bot/notify.py)

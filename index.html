@@ -351,6 +351,13 @@ html.vw-open .tts{display:none}
 .adm-b{display:inline-block;margin-left:8px;font-size:11px;font-weight:800;color:#fff;background:var(--acc);border-radius:8px;padding:2px 7px;vertical-align:middle}
 .acc-s{font-size:14px;color:var(--muted)}
 .acc-out{display:block;width:100%;margin-top:10px;color:#d23b5c}
+.nt-box .acc-s{display:block;margin-bottom:6px}
+.nt-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;font-size:15px;font-weight:600;cursor:pointer;border-top:1px solid var(--line, rgba(127,127,127,.15))}
+.nt-sw{appearance:none;-webkit-appearance:none;flex:none;width:46px;height:28px;border-radius:14px;background:rgba(127,127,127,.35);position:relative;cursor:pointer;transition:background .2s;margin:0}
+.nt-sw::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.nt-sw:checked{background:var(--acc)}
+.nt-sw:checked::after{transform:translateX(18px)}
+.nt-sw:disabled{opacity:.5}
 .bug-go.off{opacity:.6;pointer-events:none}
 .lg-st{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--acc-soft);color:var(--acc-ink);font-weight:600;font-size:14px}
 .lg-st.bad{background:#fdecef;color:#a12b4a}
@@ -9155,7 +9162,7 @@ function openLogin(){
     <div class="os step"><b>${GROUP_LINK ? 'Шаг 2. ' : ''}Войди на сайт</b><ol><li>Нажми кнопку ниже — откроется бот в Telegram.</li><li>Нажми <b>«Старт»</b> (или «Запустить»).</li><li>Вернись сюда — сайт сам тебя впустит.</li></ol>
     <a id="lgGo" class="primary bug-go off" target="_blank" rel="noopener">⏳ Готовлю ссылку…</a></div>
     <div id="lgSt" class="lg-st" hidden></div>
-    <div class="lg-perks"><b>Что откроется после входа</b><span>💬 Болталка группы</span><span>🙋 «Кто что отвечает» под каждой лекцией</span><span>☁️ Прогресс карточек и тестов — на всех устройствах</span></div>`);
+    <div class="lg-perks"><b>Что откроется после входа</b><span>💬 Болталка группы</span><span>🙋 «Кто что отвечает» под каждой лекцией</span><span>☁️ Прогресс карточек и тестов — на всех устройствах</span><span>🔔 Новое ДЗ и замены пар — сразу в Telegram</span></div>`);
   const L = LOGIN;
   api('login_start').then(d => {
     const a = $('#lgGo'); if (!a || L !== LOGIN) return;
@@ -9196,9 +9203,27 @@ function openAccount(){
   const u = SX.user;
   openSheet(`<div class="acc-head">${ava(u.uid, u.name, 'big')}<div><h3>${esc(u.name)}</h3>${u.uname ? `<small>@${esc(u.uname)}</small>` : ''}${u.adm ? '<span class="adm-b">админ</span>' : ''}</div></div>
     <div class="os"><b>☁️ Прогресс сохраняется в аккаунте</b><span class="acc-s">Карточки «знаю», лучшие результаты тестов и отметки в вопросах к экзамену — одинаковые на телефоне и компьютере.</span></div>
+    <div class="os nt-box"><b>🔔 Уведомления в Telegram</b><span class="acc-s">Бот «Зубрёжки» напишет тебе в Telegram, как только появится что-то новое.</span>
+      <label class="nt-row"><span>📌 Новое домашнее задание</span><input type="checkbox" class="nt-sw" data-nt="hw" disabled></label>
+      <label class="nt-row"><span>📅 Изменения в расписании</span><input type="checkbox" class="nt-sw" data-nt="sch" disabled></label></div>
     <button class="secondary" style="width:100%" data-sx="go-chat">💬 Болталка группы</button>
     <button class="link-btn acc-out" data-sx="logout">Выйти из аккаунта</button>`);
+  ntFill(store.get('nt', null));
+  api('notif_get').then(d => { store.set('nt', d.nt); ntFill(d.nt); }).catch(() => {});
 }
+function ntFill(nt){
+  if (!nt) return;
+  document.querySelectorAll('.nt-sw').forEach(x => { x.checked = !!nt[x.dataset.nt]; x.disabled = false; });
+}
+document.addEventListener('change', e => {
+  const x = e.target.closest && e.target.closest('.nt-sw'); if (!x) return;
+  const k = x.dataset.nt, on = x.checked;
+  x.disabled = true;
+  api('notif_set', { [k]: on }).then(d => {
+    store.set('nt', d.nt); ntFill(d.nt);
+    toast(on ? (k === 'hw' ? '🔔 Буду присылать новое ДЗ в Telegram' : '🔔 Буду присылать изменения расписания') : '🔕 Выключено');
+  }).catch(err => { x.checked = !on; x.disabled = false; sxErr(err); });
+});
 
 /* ---------- прогресс в облаке ---------- */
 const SYNC_KEYS = ['known', 'best', 'examKnown'];

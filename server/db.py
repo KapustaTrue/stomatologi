@@ -93,6 +93,10 @@ class SqliteDB(Base):
     def ava_set(self, uid, img, ts): self._q('INSERT OR REPLACE INTO avas VALUES (?,?,?)', uid, img, ts)
     def ava_get(self, uid):
         r = self._q('SELECT * FROM avas WHERE uid=?', uid); return r[0] if r else None
+    # уведомления: кто вошёл на сайт, кто в чате, настройки (cfg 'nt:<uid>')
+    def users_all(self): return self._q('SELECT uid, name FROM users')
+    def members_all(self): return [int(r['uid']) for r in self._q('SELECT uid FROM members')]
+    def cfg_prefix(self, p): return {r['k']: r['v'] for r in self._q('SELECT k, v FROM cfg WHERE k LIKE ?', p + '%')}
 
 
 # ======================= YDB (Яндекс Облако) =======================
@@ -187,6 +191,10 @@ class YdbDB(Base):
     def codes_wait(self, uid): return [r['code'] for r in self._rows('SELECT code FROM codes WHERE uid = $uid AND st = $st;', uid=uid, st='notseen')]
     def ava_set(self, uid, img, ts): self._q('UPSERT INTO avas (uid, img, ts) VALUES ($uid, $img, $ts);', uid=uid, img=img, ts=ts)
     def ava_get(self, uid): r = self._rows('SELECT * FROM avas WHERE uid = $uid;', uid=uid); return r[0] if r else None
+    # уведомления: кто вошёл на сайт, кто в чате, настройки (cfg 'nt:<uid>')
+    def users_all(self): return self._rows('SELECT uid, name FROM users;')
+    def members_all(self): return [int(r['uid']) for r in self._rows('SELECT uid FROM members;')]
+    def cfg_prefix(self, p): return {r['k']: r['v'] for r in self._rows('SELECT k, v FROM cfg WHERE StartsWith(k, $p);', p=p)}
 
 
 _db = None

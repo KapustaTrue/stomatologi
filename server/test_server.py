@@ -135,4 +135,26 @@ r = index.handler({'httpMethod': 'POST', 'headers': {'x-telegram-bot-api-secret-
 r = index.handler({'httpMethod': 'GET', 'headers': {}, 'queryStringParameters': {'ava': '1'}}); assert r['statusCode'] == 200 and r['isBase64Encoded'] and base64.b64decode(r['body']) == b'\xff\xd8jpeg'
 assert index.handler({'httpMethod': 'GET', 'headers': {}, 'queryStringParameters': {'ava': '2'}})['headers']['Content-Type'] == 'image/gif'
 r = index.handler({'httpMethod': 'POST', 'headers': {}, 'queryStringParameters': {'tg': '1', 'ava': '1'}, 'body': '{}'}); assert r['statusCode'] == 403
+
+# --- уведомления: по умолчанию всё включено, настройка с сайта и командами в боте
+def subs(secret=True):
+    r = index.handler({'httpMethod': 'POST', 'headers': {'X-Telegram-Bot-Api-Secret-Token': index.tg_secret() if secret else 'x'},
+                       'queryStringParameters': {'tg': '1', 'subs': '1'}, 'body': '{}'})
+    return r['statusCode'], json.loads(r['body'])
+assert subs(False)[0] == 403
+st, r = subs(); assert st == 200
+U = {u['uid']: u for u in r['users']}
+assert set(U) == {1, 3, 4}, U                     # Петя (2) вышел из чата — ему не шлём
+assert U[1]['hw'] and U[1]['sch']
+assert call({'a': 'notif_get', 't': masha})['nt'] == {'hw': True, 'sch': True}
+assert call({'a': 'notif_set', 't': masha, 'sch': False})['nt'] == {'hw': True, 'sch': False}
+assert call({'a': 'notif_get', 't': masha})['nt'] == {'hw': True, 'sch': False}
+assert call({'a': 'notif_get'})['err'] == 'auth'
+def pm(uid, text): return tg({'message': {'chat': {'id': uid, 'type': 'private'}, 'from': {'id': uid, 'first_name': 'X'}, 'text': text}})[1]
+assert '🔕' in pm(3, '/off')['text']
+assert call({'a': 'notif_get', 't': lesha})['nt'] == {'hw': False, 'sch': False}
+U = {u['uid']: u for u in subs()[1]['users']}; assert not U[3]['hw'] and not U[3]['sch'] and U[1]['hw'] and not U[1]['sch']
+assert 'расписание' in pm(3, '/sch')['text']; assert call({'a': 'notif_get', 't': lesha})['nt'] == {'hw': False, 'sch': True}
+pm(3, '/on'); assert call({'a': 'notif_get', 't': lesha})['nt'] == {'hw': True, 'sch': True}
+assert 'Уведомления' in pm(3, '/notify')['text']
 print('✅ все проверки сервера прошли')
