@@ -9,6 +9,8 @@ TABLES = {
     'qs':     ('lec Utf8, id Utf8, text Utf8, uid Int64, name Utf8, ts Int64', 'lec, id'),
     'claims': ('lec Utf8, qid Utf8, uid Int64, name Utf8, ts Int64', 'lec, qid, uid'),
     'prog':   ('uid Int64, js Utf8, ts Int64', 'uid'),
+    'members': ('uid Int64, name Utf8, ts Int64', 'uid'),
+    'cfg':    ('k Utf8, v Utf8', 'k'),
 }
 
 
@@ -77,6 +79,15 @@ class SqliteDB(Base):
     def prog_get(self, uid):
         r = self._q('SELECT * FROM prog WHERE uid=?', uid); return r[0] if r else None
     def prog_put(self, uid, data, ts): self._q('INSERT OR REPLACE INTO prog VALUES (?,?,?)', uid, data, ts)
+
+    def member_set(self, uid, name, ts): self._q('INSERT OR REPLACE INTO members VALUES (?,?,?)', uid, name, ts)
+    def member_get(self, uid):
+        r = self._q('SELECT * FROM members WHERE uid=?', uid); return r[0] if r else None
+    def member_del(self, uid): self._q('DELETE FROM members WHERE uid=?', uid)
+    def cfg_get(self, k):
+        r = self._q('SELECT v FROM cfg WHERE k=?', k); return r[0]['v'] if r else ''
+    def cfg_set(self, k, v): self._q('INSERT OR REPLACE INTO cfg VALUES (?,?)', k, v)
+    def codes_wait(self, uid): return [r['code'] for r in self._q("SELECT code FROM codes WHERE uid=? AND st='notseen'", uid)]
 
 
 # ======================= YDB (Яндекс Облако) =======================
@@ -161,6 +172,13 @@ class YdbDB(Base):
 
     def prog_get(self, uid): r = self._rows('SELECT * FROM prog WHERE uid = $uid;', uid=uid); return r[0] if r else None
     def prog_put(self, uid, data, ts): self._q('UPSERT INTO prog (uid, js, ts) VALUES ($uid, $js, $ts);', uid=uid, js=data, ts=ts)
+
+    def member_set(self, uid, name, ts): self._q('UPSERT INTO members (uid, name, ts) VALUES ($uid, $name, $ts);', uid=uid, name=name, ts=ts)
+    def member_get(self, uid): r = self._rows('SELECT * FROM members WHERE uid = $uid;', uid=uid); return r[0] if r else None
+    def member_del(self, uid): self._q('DELETE FROM members WHERE uid = $uid;', uid=uid)
+    def cfg_get(self, k): r = self._rows('SELECT v FROM cfg WHERE k = $k;', k=k); return r[0]['v'] if r else ''
+    def cfg_set(self, k, v): self._q('UPSERT INTO cfg (k, v) VALUES ($k, $v);', k=k, v=v)
+    def codes_wait(self, uid): return [r['code'] for r in self._rows('SELECT code FROM codes WHERE uid = $uid AND st = $st;', uid=uid, st='notseen')]
 
 
 _db = None

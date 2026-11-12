@@ -9,10 +9,7 @@ os.environ['LOGIN_BOT_NAME'] = 'zubrezhka_s201_bot'
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import index
 
-MEMBERS = {1: 'member', 2: 'left', 3: 'creator'}
-def fake_tg(token, method, **p):
-    if method == 'getChatMember': return {'ok': True, 'result': {'status': MEMBERS.get(int(p['user_id']), 'left')}}
-    return {'ok': True, 'result': {}}
+def fake_tg(*a, **k): raise AssertionError('из Облака в Telegram ходить нельзя')
 index.tg_call = fake_tg
 
 H = {'Origin': 'https://kapustatrue.github.io'}
@@ -40,19 +37,40 @@ assert r['statusCode'] == 403
 r = index.handler({'httpMethod': 'GET', 'headers': {}, 'queryStringParameters': {'setup': 'bad'}}); assert r['statusCode'] == 403
 r = index.handler({'httpMethod': 'GET', 'headers': {}, 'queryStringParameters': {'setup': 'k'}}); assert r['statusCode'] == 200, r
 
+def group(uid, first, extra=None, chat=-100):
+    m = {'chat': {'id': chat, 'type': 'supergroup'}, 'from': {'id': uid, 'first_name': first}}
+    m.update(extra or {'text': 'привет'}); return tg({'message': m})
+
+# --- бот ещё не в группе
+c = call({'a': 'login_start'}); st, rr = start(1, c['code'], 'Маша'); assert 'не подключён' in rr['text'], rr
+# --- Лёша добавляет бота в чат группы → группа запомнена, Лёша — админ
+st, rr = group(3, 'Лёша', {'new_chat_members': [{'id': 999, 'is_bot': True, 'username': 'zubrezhka_s201_bot'}]})
+assert rr['method'] == 'sendMessage' and rr['chat_id'] == -100, rr
+# --- чужая группа → бот уходит
+st, rr = group(7, 'Чужой', {'new_chat_members': [{'id': 999, 'is_bot': True, 'username': 'zubrezhka_s201_bot'}]}, chat=-555)
+assert rr['method'] == 'leaveChat'
+group(1, 'Маша')                                  # Маша пишет в чат → участница
+group(8, 'Чужой', chat=-555)                      # сообщение из чужой группы не считается
 # --- вход участника
 code, r = login(1, 'Маша'); assert r['st'] == 'ok' and r['user']['name'] == 'Маша' and not r['user']['adm'], r
 masha = r['token']
 assert call({'a': 'login_check', 'code': code})['st'] == 'expired'   # код одноразовый
-# --- не участник
-c = call({'a': 'login_start'}); st, rr = start(2, c['code'], 'Чужой'); assert '🔒' in rr['text']
-assert call({'a': 'login_check', 'code': c['code']})['st'] == 'denied'
-# --- создатель чата = админ
-_, r = login(3, 'Лёша'); assert r['user']['adm']; lesha = r['token']
+# --- не видели в чате → пишет в чат → пускает сам
+c = call({'a': 'login_start'}); st, rr = start(2, c['code'], 'Петя'); assert '👀' in rr['text']
+assert call({'a': 'login_check', 'code': c['code']})['st'] == 'notseen'
+group(2, 'Петя'); r = call({'a': 'login_check', 'code': c['code']}); assert r['st'] == 'ok' and r['user']['uid'] == 2, r
+# --- из чужой группы не пускает
+c = call({'a': 'login_start'}); start(8, c['code'], 'Чужой'); assert call({'a': 'login_check', 'code': c['code']})['st'] == 'notseen'
+# --- вышел из чата → больше не пускает; вступил по ссылке → пускает
+group(3, 'Лёша', {'left_chat_member': {'id': 2, 'first_name': 'Петя'}})
+c = call({'a': 'login_start'}); start(2, c['code'], 'Петя'); assert call({'a': 'login_check', 'code': c['code']})['st'] == 'notseen'
+group(4, 'Вера', {'new_chat_members': [{'id': 4, 'first_name': 'Вера'}]})
+_, r = login(4, 'Вера'); assert r['st'] == 'ok'
+# --- создатель = админ
+_, r = login(3, 'Лёша'); assert r['user']['adm'], r; lesha = r['token']
 # --- /start без кода
 st, rr = tg({'message': {'chat': {'id': 5, 'type': 'private'}, 'from': {'id': 5, 'first_name': 'X'}, 'text': '/start'}}); assert 'Зубрёжка' in rr['text']
-# --- групповые сообщения игнорируются
-st, rr = tg({'message': {'chat': {'id': -100, 'type': 'supergroup'}, 'from': {'id': 5}, 'text': 'hi'}}); assert rr == {}
+assert json.loads(index.handler({'httpMethod': 'GET', 'headers': {}, 'queryStringParameters': {'diag': '1'}})['body'])['group_connected']
 
 # --- без токена закрыто, плохой токен закрыт
 assert call({'a': 'msgs', 'room': 'general'})['err'] == 'auth'

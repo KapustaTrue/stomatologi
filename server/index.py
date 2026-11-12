@@ -66,32 +66,50 @@ def tg_call(token, method, **params):
 
 def admin_ids(): return {int(x) for x in re.findall(r'-?\d+', ENV('ADMIN_IDS', ''))}
 
-def membership(uid):
-    """(можно_войти, админ, пояснение). Проверяем, что человек есть в чате группы."""
-    chat = ENV('GROUP_CHAT_ID', '').strip()
-    tok = ENV('MAIN_BOT_TOKEN', '') or ENV('LOGIN_BOT_TOKEN', '')
-    if uid in admin_ids(): return True, True, 'admin'
-    if not chat: return True, False, 'no-check'
-    try:
-        r = tg_call(tok, 'getChatMember', chat_id=chat, user_id=uid)
-    except Exception as e:
-        return False, False, f'check-failed: {e}'
-    m = r.get('result') or {}
-    st = m.get('status')
-    if st in ('creator', 'administrator'): return True, True, st
-    if st == 'member' or (st == 'restricted' and m.get('is_member')): return True, False, st
-    return False, False, st or 'unknown'
-
 def full_name(u):
     n = ' '.join(x for x in [u.get('first_name', ''), u.get('last_name', '')] if x).strip()
     return (n or u.get('username') or 'Без имени')[:60]
 
+# Из Яндекс Облака серверы Telegram недоступны, поэтому сами в Telegram не ходим:
+# бот входа сидит в чате группы (режим приватности выключен) и по вебхуку запоминает,
+# кто там пишет и кто вступает/выходит. Отвечаем только в теле ответа на вебхук.
+def is_admin(db, uid): return uid in admin_ids() or str(uid) == db.cfg_get('admin')
+
+def handle_group(db, msg, chat):
+    gid = db.cfg_get('group'); cid = str(chat['id'])
+    me = (ENV('LOGIN_BOT_NAME', '') or '').lower()
+    added = [u for u in msg.get('new_chat_members') or []]
+    if any((u.get('username') or '').lower() == me for u in added) or (msg.get('group_chat_created') and not gid):
+        if not gid:
+            db.cfg_set('group', cid); db.cfg_set('admin', str(msg['from']['id']))
+            for u in added:
+                if not u.get('is_bot'): db.member_set(int(u['id']), full_name(u), now())
+            db.member_set(int(msg['from']['id']), full_name(msg['from']), now())
+            return {'method': 'sendMessage', 'chat_id': chat['id'], 'parse_mode': 'HTML', 'disable_web_page_preview': True,
+                    'text': f'👋 Привет! Я бот входа на сайт «Зубрёжка».\n\nЧтобы войти на сайт: открой {SITE} → «Войти» → «Войти через Telegram» → «Старт».\n\n<i>Если бот напишет «не видел тебя в чате» — просто напиши сюда любое сообщение.</i>'}
+        if gid != cid:
+            return {'method': 'leaveChat', 'chat_id': chat['id']}
+    if msg.get('migrate_to_chat_id') and gid == cid:   # группа стала супергруппой — у неё новый id
+        db.cfg_set('group', str(msg['migrate_to_chat_id'])); return None
+    if gid != cid: return None
+    for u in added:
+        if not u.get('is_bot'): db.member_set(int(u['id']), full_name(u), now())
+    left = msg.get('left_chat_member')
+    if left and not left.get('is_bot'): db.member_del(int(left['id']))
+    u = msg.get('from') or {}
+    if u.get('id') and not u.get('is_bot') and not left:
+        uid = int(u['id'])
+        db.member_set(uid, full_name(u), now())
+        for code in db.codes_wait(uid):   # человек нажал «Старт» раньше, чем написал в чат, — пускаем
+            db.code_set(code, uid, full_name(u), u.get('username') or '', 'ok', is_admin(db, uid))
+    return None
 
 def handle_tg(update):
-    """Вебхук бота для входа. Отвечаем прямо в ответе на вебхук (method в теле) — без лишних запросов."""
+    """Вебхук бота для входа. Отвечаем прямо в ответе на вебхук (method в теле)."""
     db = get_db()
     msg = update.get('message') or {}
     chat = msg.get('chat') or {}
+    if chat.get('type') in ('group', 'supergroup'): return handle_group(db, msg, chat)
     if chat.get('type') != 'private' or not msg.get('from'): return None
     u = msg['from']; uid = int(u['id']); text = (msg.get('text') or '').strip()
     reply = lambda t: {'method': 'sendMessage', 'chat_id': chat['id'], 'text': t, 'parse_mode': 'HTML', 'disable_web_page_preview': True}
@@ -104,14 +122,13 @@ def handle_tg(update):
         return reply('⌛ Ссылка для входа устарела. Нажми «Войти» на сайте ещё раз.')
     if row['st'] == 'ok':
         return reply('✅ Ты уже вошёл — возвращайся на сайт.')
-    ok, adm, why = membership(uid)
-    name = full_name(u)
-    if not ok:
-        db.code_set(code, uid, name, u.get('username') or '', 'denied', False)
-        if why.startswith('check-failed'):
-            return reply('😕 Не получилось проверить, что ты в чате группы. Попробуй ещё раз через минуту.')
-        return reply('🔒 На сайт пускаем только участников чата группы С-201.\nЕсли ты из группы — попроси добавить тебя в чат и попробуй снова.')
-    db.code_set(code, uid, name, u.get('username') or '', 'ok', adm)
+    name = full_name(u); uname = u.get('username') or ''
+    if not db.cfg_get('group') and not admin_ids():
+        return reply('⏳ Бот ещё не подключён к чату группы. Попроси старосту/админа сайта добавить @' + (ENV('LOGIN_BOT_NAME') or 'бота') + ' в чат группы.')
+    if not (db.member_get(uid) or uid in admin_ids()):
+        db.code_set(code, uid, name, uname, 'notseen', False)
+        return reply('👀 Почти готово! Я пока не видел тебя в чате группы С-201.\n\n<b>Напиши любое сообщение в чат группы</b> (например, «я с сайта 👋») — и сайт сам тебя впустит, нажимать ничего не нужно.\n\nЕщё не в чате? Вступи по кнопке на сайте.')
+    db.code_set(code, uid, name, uname, 'ok', is_admin(db, uid))
     return reply(f'✅ Готово, {name}! Вход подтверждён.\n\nВозвращайся на сайт «Зубрёжка» — он уже пускает тебя. 🦷\n\n<i>Если ты не нажимал «Войти» на сайте — просто проигнорируй это сообщение.</i>')
 
 
@@ -159,6 +176,7 @@ def api(d):
         row = db.code_get(code) if code else None
         if not row or row['ts'] < now() - CODE_TTL: return {'st': 'expired'}
         if row['st'] == 'denied': return {'st': 'denied'}
+        if row['st'] == 'notseen': return {'st': 'notseen'}
         if row['st'] != 'ok': return {'st': 'wait'}
         uid2 = int(row['uid']); name = row['name']; adm = bool(row['adm'])
         db.user_upsert(uid2, name, row['uname'] or '', now())
@@ -317,23 +335,9 @@ def handler(event, context=None):
             except Exception as e: out[host] = f'fail {type(e).__name__} {time.time()-t0:.2f}s'
         return resp(200, out, ch)
 
-    if qs.get('diag') is not None and method == 'GET':  # проверка связки с Telegram (без секретов)
-        out = {'bot_name': ENV('LOGIN_BOT_NAME', ''), 'has_login_token': bool(ENV('LOGIN_BOT_TOKEN')), 'has_main_token': bool(ENV('MAIN_BOT_TOKEN')), 'group_set': bool(ENV('GROUP_CHAT_ID'))}
-        try:
-            w = (tg_call(ENV('LOGIN_BOT_TOKEN', ''), 'getWebhookInfo').get('result') or {})
-            out['webhook'] = {k: w.get(k) for k in ('pending_update_count', 'last_error_date', 'last_error_message', 'max_connections')}
-            out['webhook']['url_ok'] = (w.get('url') or '').endswith('?tg=1')
-        except Exception as e:
-            out['telegram_error'] = repr(e)[:200]
-        if ENV('GROUP_CHAT_ID') and ENV('MAIN_BOT_TOKEN'):
-            try:
-                r = tg_call(ENV('MAIN_BOT_TOKEN'), 'getChat', chat_id=ENV('GROUP_CHAT_ID'))
-                out['group'] = (r.get('result') or {}).get('title')
-            except Exception as e:
-                out['group_error'] = repr(e)[:200]
-        try: get_db().code_get('x'); out['db'] = 'ok'
-        except Exception as e: out['db'] = repr(e)[:200]
-        return resp(200, out, ch)
+    if qs.get('diag') is not None and method == 'GET':  # состояние без секретов
+        db = get_db()
+        return resp(200, {'bot_name': ENV('LOGIN_BOT_NAME', ''), 'group_connected': bool(db.cfg_get('group')), 'admin_set': bool(db.cfg_get('admin'))}, ch)
 
     if method == 'GET':
         return resp(200, {'ok': True, 'service': 'zubrezhka-api'}, ch)

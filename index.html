@@ -9154,6 +9154,7 @@ function lgPoll(){
     if (d.st === 'ok') return sxLoggedIn(d.token, d.user);
     if (d.st === 'denied'){ lgStatus(GROUP_LINK ? '🔒 Бот не нашёл тебя в чате группы. Сначала вступи в чат (шаг 1), потом нажми «Войти через Telegram» ещё раз.' : '🔒 Бот не нашёл тебя в чате группы С-201. Если ты из группы — попроси добавить тебя в чат и попробуй снова.', true); return lgRetry(); }
     if (d.st === 'expired') return lgStatus('⌛ Ссылка устарела — закрой окно и нажми «Войти» ещё раз.', true);
+    if (d.st === 'notseen'){ if (!L.seenMsg){ L.seenMsg = true; lgStatus('👀 Почти готово! Бот ещё не видел тебя в чате группы. Напиши любое сообщение в чат группы С-201 (например, «я с сайта 👋») — и сайт сам тебя впустит. Это окно не закрывай.'); } L.tmr = setTimeout(lgPoll, 2500); return; }
     L.tmr = setTimeout(lgPoll, 2000);
   }).catch(() => { if (L === LOGIN) L.tmr = setTimeout(lgPoll, 4000); });
 }
