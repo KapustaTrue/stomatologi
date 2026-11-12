@@ -32,6 +32,31 @@ def to_server(update):
             print('сервер недоступен:', repr(e)[:200], flush=True); time.sleep(2 + attempt * 3)
     return None
 
+import base64
+AVA_DONE = {}   # uid → когда обновляли фото (раз в 6 часов на смену хватает)
+def sync_ava(user):
+    uid = user.get('id')
+    if not uid or user.get('is_bot') or time.time() - AVA_DONE.get(uid, 0) < 6 * 3600: return
+    AVA_DONE[uid] = time.time()
+    img = ''
+    try:
+        ph = tg('getUserProfilePhotos', timeout=15, user_id=uid, limit=1).get('result', {}).get('photos') or []
+        if ph:
+            small = sorted(ph[0], key=lambda x: x.get('width', 0))
+            pick = next((x for x in small if x.get('width', 0) >= 120), small[-1])
+            path = tg('getFile', timeout=15, file_id=pick['file_id'])['result']['file_path']
+            with urllib.request.urlopen(f'https://api.telegram.org/file/bot{TOKEN}/{path}', timeout=20) as r:
+                raw = r.read()
+            if len(raw) < 85_000: img = base64.b64encode(raw).decode()
+    except Exception as e:
+        print('фото не получено:', repr(e)[:150], flush=True)
+    try:
+        req = urllib.request.Request(API + ('&' if '?' in API else '?') + 'tg=1&ava=1', data=json.dumps({'uid': uid, 'img': img}).encode(),
+                                     headers={'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': SECRET})
+        urllib.request.urlopen(req, timeout=20).read()
+    except Exception as e:
+        print('фото не отправлено:', repr(e)[:150], flush=True)
+
 print('удаляю вебхук (бот работает опросом):', tg('deleteWebhook', timeout=20).get('ok'), flush=True)
 start, offset = time.time(), None
 while time.time() - start < RUN_FOR:
@@ -50,6 +75,8 @@ while time.time() - start < RUN_FOR:
             meth = r.pop('method')
             try: tg(meth, timeout=20, **r)
             except Exception as e: print('ответ не отправлен:', repr(e)[:200], flush=True)
+        if m.get('from'): sync_ava(m['from'])
+        for nu in m.get('new_chat_members') or []: sync_ava(nu)
 # отмечаем последний offset, чтобы следующая смена не получила те же сообщения
 if offset:
     try: getupd({'offset': offset, 'timeout': 0})

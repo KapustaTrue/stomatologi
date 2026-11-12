@@ -319,6 +319,12 @@ def handler(event, context=None):
         try: get_db().cfg_set('last_hook', f'{now()} secret={"ok" if ok else ("bad" if got else "none")}')
         except Exception as e: print('last_hook', repr(e))
         if not ok: return resp(403, {'err': 'forbidden'})
+        if qs.get('ava'):   # мост присылает фото профиля: {uid, img: base64 jpeg | ''}
+            try:
+                d = json.loads(body or '{}'); img = str(d.get('img') or '')
+                if len(img) <= 120_000: get_db().ava_set(int(d['uid']), img, now())
+            except Exception as e: print('ava', repr(e))
+            return resp(200, {'ok': True})
         try:
             r = handle_tg(json.loads(body or '{}'))
         except Exception as e:
@@ -330,6 +336,17 @@ def handler(event, context=None):
     if qs.get('setup') is not None and method == 'GET':
         if not setup_key() or not hmac.compare_digest(str(qs.get('setup')), setup_key()): return resp(403, {'err': 'Неверный ключ настройки'})
         return resp(200, do_setup(context, headers))
+
+    if qs.get('ava') and method == 'GET':   # аватарка участника (картинка), кэшируется на сутки
+        try:
+            r = get_db().ava_get(int(qs.get('ava')))
+        except Exception:
+            r = None
+        if not r or not r['img']:   # нет фото — прозрачная точка (на сайте остаются инициалы)
+            return {'statusCode': 200, 'headers': {'Content-Type': 'image/gif', 'Cache-Control': 'public, max-age=21600', 'Access-Control-Allow-Origin': '*'},
+                    'body': 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'isBase64Encoded': True}
+        return {'statusCode': 200, 'headers': {'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400', 'Access-Control-Allow-Origin': '*'},
+                'body': r['img'], 'isBase64Encoded': True}
 
     if qs.get('net') is not None and method == 'GET':  # доступность сайтов из Облака
         import socket

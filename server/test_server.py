@@ -119,4 +119,10 @@ r = index.handler({'httpMethod': 'GET', 'headers': H}); assert json.loads(r['bod
 import base64
 r = index.handler({'httpMethod': 'POST', 'headers': H, 'isBase64Encoded': True, 'body': base64.b64encode(json.dumps({'a': 'hello'}).encode()).decode()})
 assert json.loads(r['body'])['ok']
+# --- аватарки: мост присылает фото, сайт получает картинку
+r = index.handler({'httpMethod': 'POST', 'headers': {'x-telegram-bot-api-secret-token': index.tg_secret()}, 'queryStringParameters': {'tg': '1', 'ava': '1'},
+                   'body': json.dumps({'uid': 1, 'img': base64.b64encode(b'\xff\xd8jpeg').decode()})}); assert r['statusCode'] == 200
+r = index.handler({'httpMethod': 'GET', 'headers': {}, 'queryStringParameters': {'ava': '1'}}); assert r['statusCode'] == 200 and r['isBase64Encoded'] and base64.b64decode(r['body']) == b'\xff\xd8jpeg'
+assert index.handler({'httpMethod': 'GET', 'headers': {}, 'queryStringParameters': {'ava': '2'}})['headers']['Content-Type'] == 'image/gif'
+r = index.handler({'httpMethod': 'POST', 'headers': {}, 'queryStringParameters': {'tg': '1', 'ava': '1'}, 'body': '{}'}); assert r['statusCode'] == 403
 print('✅ все проверки сервера прошли')

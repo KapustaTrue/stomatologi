@@ -11,6 +11,7 @@ TABLES = {
     'prog':   ('uid Int64, js Utf8, ts Int64', 'uid'),
     'members': ('uid Int64, name Utf8, ts Int64', 'uid'),
     'cfg':    ('k Utf8, v Utf8', 'k'),
+    'avas':   ('uid Int64, img Utf8, ts Int64', 'uid'),
 }
 
 
@@ -88,6 +89,9 @@ class SqliteDB(Base):
         r = self._q('SELECT v FROM cfg WHERE k=?', k); return r[0]['v'] if r else ''
     def cfg_set(self, k, v): self._q('INSERT OR REPLACE INTO cfg VALUES (?,?)', k, v)
     def codes_wait(self, uid): return [r['code'] for r in self._q("SELECT code FROM codes WHERE uid=? AND st='notseen'", uid)]
+    def ava_set(self, uid, img, ts): self._q('INSERT OR REPLACE INTO avas VALUES (?,?,?)', uid, img, ts)
+    def ava_get(self, uid):
+        r = self._q('SELECT * FROM avas WHERE uid=?', uid); return r[0] if r else None
 
 
 # ======================= YDB (Яндекс Облако) =======================
@@ -179,6 +183,8 @@ class YdbDB(Base):
     def cfg_get(self, k): r = self._rows('SELECT v FROM cfg WHERE k = $k;', k=k); return r[0]['v'] if r else ''
     def cfg_set(self, k, v): self._q('UPSERT INTO cfg (k, v) VALUES ($k, $v);', k=k, v=v)
     def codes_wait(self, uid): return [r['code'] for r in self._rows('SELECT code FROM codes WHERE uid = $uid AND st = $st;', uid=uid, st='notseen')]
+    def ava_set(self, uid, img, ts): self._q('UPSERT INTO avas (uid, img, ts) VALUES ($uid, $img, $ts);', uid=uid, img=img, ts=ts)
+    def ava_get(self, uid): r = self._rows('SELECT * FROM avas WHERE uid = $uid;', uid=uid); return r[0] if r else None
 
 
 _db = None

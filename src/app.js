@@ -1224,7 +1224,8 @@ function api(a, data){
 const sxErr = e => toast(e && e.code ? (e.message || 'Ошибка') : '📡 Нет связи с сервером — проверь интернет');
 const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 const avaColor = uid => ['#7b61d6','#e0527a','#3f9e5c','#ef9a3a','#3d7fd9','#13a3b5','#c2456a','#6b4cff'][Math.abs(+uid || 0) % 8];
-const ava = (uid, name, cls='') => `<span class="ava ${cls}" style="background:${avaColor(uid)}">${esc(initials(name))}</span>`;
+const AVA_DAY = Math.floor(Date.now() / 864e5);   // фото из Telegram (через сервер), обновляем раз в день; нет фото — инициалы
+const ava = (uid, name, cls='') => `<span class="ava ${cls}" style="background:${avaColor(uid)}">${esc(initials(name))}${SX.on && uid ? `<img src="${API_URL}${API_URL.includes('?') ? '&' : '?'}ava=${+uid}&d=${AVA_DAY}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>`;
 const linkify = s => esc(s).replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]»"'])/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.length > 48 ? u.slice(0, 45) + '…' : u}</a>`).replace(/\n/g, '<br>');
 const firstName = n => String(n || '').split(/\s+/)[0];
 function accBtn(){
@@ -1374,8 +1375,8 @@ function msgHTML(m, prev){
   if (m.del) return sep + `<div class="msg gone${me ? ' mine' : ''}"><span class="ava-sp"></span><div class="bubble"><i>сообщение удалено</i></div></div>`;
   const canDel = me || (SX.user && SX.user.adm);
   return sep + `<div class="msg${me ? ' mine' : ''}${cont ? ' cont' : ''}"${canDel ? ` data-mid="${m.id}"` : ''}>
-    ${!me && !cont ? ava(m.uid, m.name) : '<span class="ava-sp"></span>'}
-    <div class="bubble">${!me && !cont ? `<b style="color:${avaColor(m.uid)}">${esc(m.name)}</b>` : ''}<span class="mt">${linkify(m.text)}</span><small>${time}</small>
+    ${!cont ? ava(m.uid, m.name) : '<span class="ava-sp"></span>'}
+    <div class="bubble">${!cont ? `<b${me ? '' : ` style="color:${avaColor(m.uid)}"`}>${esc(m.name)}${me ? ' <i class="me-t">(ты)</i>' : ''}</b>` : ''}<span class="mt">${linkify(m.text)}</span><small>${time}</small>
     ${canDel ? `<button class="msg-del" data-sx="mdel" data-mid="${m.id}">🗑 Удалить</button>` : ''}</div></div>`;
 }
 function chatRender(){
