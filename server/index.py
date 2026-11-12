@@ -312,12 +312,19 @@ def handler(event, context=None):
     if method == 'OPTIONS': return {'statusCode': 204, 'headers': ch, 'body': ''}
 
     if qs.get('tg'):  # вебхук Telegram
-        got = headers.get('X-Telegram-Bot-Api-Secret-Token') or headers.get('x-telegram-bot-api-secret-token') or ''
-        if not hmac.compare_digest(got, tg_secret()): return resp(403, {'err': 'forbidden'})
+        got = ''
+        for k, v in headers.items():
+            if k.lower() == 'x-telegram-bot-api-secret-token': got = v
+        ok = hmac.compare_digest(got, tg_secret())
+        try: get_db().cfg_set('last_hook', f'{now()} secret={"ok" if ok else ("bad" if got else "none")}')
+        except Exception as e: print('last_hook', repr(e))
+        if not ok: return resp(403, {'err': 'forbidden'})
         try:
             r = handle_tg(json.loads(body or '{}'))
         except Exception as e:
             print('tg error', repr(e)); r = None
+            try: get_db().cfg_set('last_error', f'{now()} {repr(e)[:300]}')
+            except Exception: pass
         return resp(200, r or {})
 
     if qs.get('setup') is not None and method == 'GET':
@@ -337,7 +344,8 @@ def handler(event, context=None):
 
     if qs.get('diag') is not None and method == 'GET':  # состояние без секретов
         db = get_db()
-        return resp(200, {'bot_name': ENV('LOGIN_BOT_NAME', ''), 'group_connected': bool(db.cfg_get('group')), 'admin_set': bool(db.cfg_get('admin'))}, ch)
+        return resp(200, {'bot_name': ENV('LOGIN_BOT_NAME', ''), 'group_connected': bool(db.cfg_get('group')), 'admin_set': bool(db.cfg_get('admin')),
+                          'last_hook': db.cfg_get('last_hook'), 'last_error': db.cfg_get('last_error'), 'now': now()}, ch)
 
     if method == 'GET':
         return resp(200, {'ok': True, 'service': 'zubrezhka-api'}, ch)

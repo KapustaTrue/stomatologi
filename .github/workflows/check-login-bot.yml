@@ -1,0 +1,17 @@
+# Ручная проверка бота входа: что Telegram знает о вебхуке (Actions → «Проверка бота входа» → Run workflow)
+name: Проверка бота входа
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/check-login-bot.yml']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: getWebhookInfo / getMe
+        env:
+          T: ${{ secrets.LOGIN_BOT_TOKEN }}
+        run: |
+          curl -sS "https://api.telegram.org/bot$T/getMe" | python3 -c "import sys,json;r=json.load(sys.stdin)['result'];print('bot:',r['username'],'| читает все сообщения в группах:',r.get('can_read_all_group_messages'),'| можно в группы:',r.get('can_join_groups'))"
+          curl -sS "https://api.telegram.org/bot$T/getWebhookInfo" | python3 -c "import sys,json;r=json.load(sys.stdin)['result'];import time;r['url']=r.get('url','').split('?')[0][-25:];e=r.get('last_error_date');r['last_error_ago_s']=int(time.time()-e) if e else None;print(json.dumps(r,ensure_ascii=False,indent=1))"
