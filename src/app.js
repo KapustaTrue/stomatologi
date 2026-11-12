@@ -12,6 +12,8 @@ const store = {
 /* ---------- index ---------- */
 const LEC = {}, SUBJ = {};
 // своя цветовая гамма у лекции: l.theme = {color, soft, ink}
+// своя нумерация разделов как у преподавателя (l.ownNums): номер уже в названии раздела
+const secNo = (l, i) => l.ownNums ? '' : (i + 1) + '. ';
 const lecSubj = l => l.theme ? Object.assign({}, l.subject, l.theme) : l.subject;
 SUBJECTS.forEach(s => { SUBJ[s.id] = s; s.lectures.forEach(l => { l.subject = s; LEC[l.id] = l; }); });
 const hashId = id => id.replace(/[^a-z0-9-]/gi,'');
@@ -828,8 +830,8 @@ function renderNotes(l, pane, secIdx){
     </div>
     ${l.link ? `<a class="outlink" href="${l.link.url}" target="_blank" rel="noopener"><span style="font-size:26px">🗺️</span><div><b>${esc(l.link.label)}</b><span>Открывается отдельной страницей</span></div><span class="chev">${I.chev}</span></a>` : ''}
     <details class="toc"><summary><span>Содержание · ${l.sections.length} разделов</span><span>▾</span></summary>
-      <ol>${l.sections.map((s,i)=>`<li><a href="#" data-sec-jump="${i}">${esc(s.title)}</a></li>`).join('')}<li><a href="#" data-sec-jump="rem">Что запомнить</a></li></ol></details>
-    ${l.sections.map((s,i)=>`<section class="sec" id="sec-${i}"><h2><span class="num">${i+1}.</span><span>${esc(s.title)}</span></h2>${s.blocks.map(blockHTML).join('')}</section>`).join('')}
+      <ol${l.ownNums?' style="list-style:none;padding-left:4px"':''}>${l.sections.map((s,i)=>`<li><a href="#" data-sec-jump="${i}">${esc(s.title)}</a></li>`).join('')}<li><a href="#" data-sec-jump="rem">Что запомнить</a></li></ol></details>
+    ${l.sections.map((s,i)=>`<section class="sec${l.ownNums?' own':''}" id="sec-${i}"><h2>${l.ownNums?'':`<span class="num">${i+1}.</span>`}<span>${esc(s.title)}</span></h2>${s.blocks.map(blockHTML).join('')}</section>`).join('')}
     <section class="remember" id="sec-rem"><h2>📌 Что запомнить</h2><ul>${l.remember.map(r=>`<li>${r}</li>`).join('')}</ul></section>
     ${l.facts && l.facts.length ? `<div class="facts">${l.facts.map(f=>blockHTML(['fact',f])).join('')}</div>` : ''}
     <div style="display:flex;gap:10px;margin-top:16px"><button class="primary" style="flex:1" data-tab="cards">🃏 Учить карточки</button><button class="secondary" style="flex:1" data-tab="quiz">✅ Пройти тест</button></div>`;
@@ -1034,7 +1036,7 @@ figure{text-align:center;margin:10px 0;break-inside:avoid} figcaption{font-size:
 <div class="bar"><button onclick="window.print()">🖨 Распечатать / сохранить PDF</button><span>или Ctrl+P · на телефоне: «Поделиться» → «Печать»</span></div>
 <div class="kick">${esc(s.name)} · лекция ${l.num}${l.date?' · '+l.date:''}</div>
 <h1>${esc(l.title)}</h1><p class="sub">${esc(l.sub)}</p>
-${l.sections.map((sec,i)=>`<h2>${i+1}. ${esc(sec.title)}</h2>${sec.blocks.map(b=>blockHTML(b).replace('class="tbl"','')).join('')}`).join('')}
+${l.sections.map((sec,i)=>`<h2>${secNo(l,i)}${esc(sec.title)}</h2>${sec.blocks.map(b=>blockHTML(b).replace('class="tbl"','')).join('')}`).join('')}
 <div class="rem"><h2 style="margin-top:6px">📌 Что запомнить</h2><ul>${l.remember.map(r=>`<li>${r}</li>`).join('')}</ul></div>
 ${(l.facts||[]).map(f=>blockHTML(['fact',f])).join('')}
 <h2>🃏 Вопросы для самопроверки</h2><div class="cards">${l.cards.map(c=>`<div><b>${c[0]}</b><br>${c[1]}</div>`).join('')}</div>
@@ -1086,7 +1088,7 @@ ${(l.facts||[]).map(f=>blockHTML(['fact',f])).join('')}
 }
 function plainText(l){
   let t = `${l.subject.name} · лекция ${l.num}\n${l.title}\n\n`;
-  l.sections.forEach((s,i)=>{ t += `${i+1}. ${s.title}\n`; s.blocks.forEach(b=>{
+  l.sections.forEach((s,i)=>{ t += `${secNo(l,i)}${s.title}\n`; s.blocks.forEach(b=>{
     const pre = {sut:'Суть: ',simple:'Простыми словами: ',imp:'Важно: ',note:'',fact:'Интересно: '}[b[0]] ?? '';
     if (b[0]==='ul'||b[0]==='ol') b[1].forEach((x,k)=>t+=`${b[0]==='ol'?(k+1)+'.':'•'} ${strip(x)}\n`);
     else if (b[0]==='table') { t += b[1].join(' | ')+'\n'; b[2].forEach(r=>t+=r.join(' | ')+'\n'); }
@@ -1181,7 +1183,7 @@ function openBug(spec){
     const opts = [];
     if (/^c\d+$/.test(def)) opts.push([def, `Эта карточка (${+def.slice(1) + 1}-я по списку)`]);
     if (/^q\d+$/.test(def)) opts.push([def, `Этот вопрос теста (№${+def.slice(1) + 1})`]);
-    l.sections.forEach((s, i) => opts.push([String(i), `${i + 1}. ${strip(s.title)}`]));
+    l.sections.forEach((s, i) => opts.push([String(i), `${secNo(l, i)}${strip(s.title)}`]));
     opts.push(['r', '📌 Что запомнить']);
     if (FULL[l.id]) opts.push(['f', '🖼 Полная версия']);
     opts.push(['c', '🃏 Карточки'], ['q', '✅ Тест'], ['x', 'Другое']);
