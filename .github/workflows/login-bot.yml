@@ -1,0 +1,27 @@
+# Бот входа @zubrezhka_s201_bot (мост Telegram ⇄ сервер в Облаке): bot/login_relay.py.
+# Каждая смена работает ~5 ч 50 мин; расписание каждые 20 минут ставит следующую смену в очередь,
+# она стартует сразу после окончания текущей (concurrency) — бот на связи почти без перерывов.
+name: Бот входа
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['bot/login_relay.py', '.github/workflows/login-bot.yml']
+
+concurrency:
+  group: login-bot
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 358
+    steps:
+      - uses: actions/checkout@v4
+      - name: Бот входа на связи
+        env:
+          LOGIN_BOT_TOKEN: ${{ secrets.LOGIN_BOT_TOKEN }}
+        run: python3 bot/login_relay.py

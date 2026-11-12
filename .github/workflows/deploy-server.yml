@@ -75,16 +75,6 @@ jobs:
             LOGIN_BOT_TOKEN=${{ secrets.LOGIN_BOT_TOKEN }}
             MAIN_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
 
-      - name: Вебхук бота для входа
-        env:
-          LOGIN_BOT_TOKEN: ${{ secrets.LOGIN_BOT_TOKEN }}
-          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-          FUNCTION_ID: ${{ steps.fn.outputs.function-id }}
-        run: |
-          if [ -z "$LOGIN_BOT_TOKEN" ]; then echo "::warning::Нет секрета LOGIN_BOT_TOKEN — вебхук не поставлен"; exit 0; fi
-          SECRET=$(cd server && python3 -c "import index; print(index.tg_secret())")
-          URL="https://functions.yandexcloud.net/${FUNCTION_ID}?tg=1"
-          curl -sS "https://api.telegram.org/bot${LOGIN_BOT_TOKEN}/setWebhook" \
-            --data-urlencode "url=${URL}" --data-urlencode "secret_token=${SECRET}" \
-            --data-urlencode 'allowed_updates=["message"]' | python3 -c "import sys,json; d=json.load(sys.stdin); print('setWebhook:', d.get('ok'), d.get('description'))"
-          echo "### Адрес сервера: https://functions.yandexcloud.net/${FUNCTION_ID}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Адрес сервера
+        run: echo "### Адрес сервера: https://functions.yandexcloud.net/${{ steps.fn.outputs.function-id }}" >> "$GITHUB_STEP_SUMMARY"
+        # Бот входа работает не через вебхук (Telegram не достаёт до Облака), а через bot/login_relay.py в GitHub Actions.
