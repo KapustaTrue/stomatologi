@@ -1,0 +1,320 @@
+# Облачная функция «Зубрёжки» (Яндекс Облако, python312, точка входа index.handler).
+# Что умеет:
+#   • вход через Telegram-бота (диплинк t.me/<бот>?start=<код>), пускает только участников чата группы;
+#   • общий чат-болталка и обсуждения под лекциями;
+#   • «Кто что отвечает»: вопросы преподавателя к лекции и кто какой взял;
+#   • хранение прогресса (карточки, тесты, отметки «знаю») между устройствами.
+# Запросы сайта: POST, тело — JSON {a: действие, t: токен, ...} с Content-Type text/plain (без CORS-preflight).
+# Вебхук бота: POST ?tg=1 (заголовок X-Telegram-Bot-Api-Secret-Token).
+# Настройка: GET ?setup=<SETUP_KEY> — создаёт таблицы и ставит вебхук.
+import os, json, time, hmac, hashlib, base64, secrets, re, urllib.request, urllib.parse
+from db import get_db
+
+ENV = os.environ.get
+SITE = ENV('SITE_URL', 'https://kapustatrue.github.io/stomatologi/')
+ORIGINS = [o.strip() for o in ENV('ALLOW_ORIGINS', 'https://kapustatrue.github.io').split(',') if o.strip()]
+CODE_TTL = 15 * 60          # ссылка для входа живёт 15 минут
+TOKEN_TTL = 120 * 86400     # вход держится 120 дней
+MAX_TEXT = 1000
+ROOM_RE = re.compile(r'^(general|lec:[a-z0-9-]{1,40})$')
+LEC_RE = re.compile(r'^[a-z0-9-]{1,40}$')
+
+
+def now(): return int(time.time())
+def now_ms(): return int(time.time() * 1000)
+def new_id(): return f'{now_ms():013d}{secrets.token_hex(2)}'   # сортируется по времени
+
+
+def secret():
+    s = ENV('SESSION_SECRET', '')
+    if not s:  # запасной вариант: из токена бота (чтобы работало и без отдельного секрета)
+        s = hashlib.sha256(('zubr:' + ENV('LOGIN_BOT_TOKEN', 'dev')).encode()).hexdigest()
+    return s.encode()
+
+
+def tg_secret(): return hmac.new(secret(), b'tg-webhook', hashlib.sha256).hexdigest()[:48]
+def setup_key(): return ENV('SETUP_KEY', '')
+
+
+# ---------- токены ----------
+def b64e(b): return base64.urlsafe_b64encode(b).decode().rstrip('=')
+def b64d(s): return base64.urlsafe_b64decode(s + '=' * (-len(s) % 4))
+
+def make_token(uid, name, adm):
+    body = b64e(json.dumps({'u': uid, 'n': name, 'a': 1 if adm else 0, 'e': now() + TOKEN_TTL}, ensure_ascii=False).encode())
+    sig = b64e(hmac.new(secret(), body.encode(), hashlib.sha256).digest()[:24])
+    return body + '.' + sig
+
+def read_token(t):
+    try:
+        body, sig = str(t).split('.')
+        good = b64e(hmac.new(secret(), body.encode(), hashlib.sha256).digest()[:24])
+        if not hmac.compare_digest(sig, good): return None
+        d = json.loads(b64d(body))
+        if d.get('e', 0) < now(): return None
+        return d
+    except Exception:
+        return None
+
+
+# ---------- Telegram ----------
+def tg_call(token, method, **params):
+    data = urllib.parse.urlencode({k: (json.dumps(v) if isinstance(v, (dict, list)) else v) for k, v in params.items()}).encode()
+    req = urllib.request.Request(f'https://api.telegram.org/bot{token}/{method}', data=data)
+    with urllib.request.urlopen(req, timeout=6) as r:
+        return json.loads(r.read().decode())
+
+def admin_ids(): return {int(x) for x in re.findall(r'-?\d+', ENV('ADMIN_IDS', ''))}
+
+def membership(uid):
+    """(можно_войти, админ, пояснение). Проверяем, что человек есть в чате группы."""
+    chat = ENV('GROUP_CHAT_ID', '').strip()
+    tok = ENV('MAIN_BOT_TOKEN', '') or ENV('LOGIN_BOT_TOKEN', '')
+    if uid in admin_ids(): return True, True, 'admin'
+    if not chat: return True, False, 'no-check'
+    try:
+        r = tg_call(tok, 'getChatMember', chat_id=chat, user_id=uid)
+    except Exception as e:
+        return False, False, f'check-failed: {e}'
+    m = r.get('result') or {}
+    st = m.get('status')
+    if st in ('creator', 'administrator'): return True, True, st
+    if st == 'member' or (st == 'restricted' and m.get('is_member')): return True, False, st
+    return False, False, st or 'unknown'
+
+def full_name(u):
+    n = ' '.join(x for x in [u.get('first_name', ''), u.get('last_name', '')] if x).strip()
+    return (n or u.get('username') or 'Без имени')[:60]
+
+
+def handle_tg(update):
+    """Вебхук бота для входа. Отвечаем прямо в ответе на вебхук (method в теле) — без лишних запросов."""
+    db = get_db()
+    msg = update.get('message') or {}
+    chat = msg.get('chat') or {}
+    if chat.get('type') != 'private' or not msg.get('from'): return None
+    u = msg['from']; uid = int(u['id']); text = (msg.get('text') or '').strip()
+    reply = lambda t: {'method': 'sendMessage', 'chat_id': chat['id'], 'text': t, 'parse_mode': 'HTML', 'disable_web_page_preview': True}
+    m = re.match(r'^/start(?:@\w+)?\s+([A-Za-z0-9_-]{8,64})$', text)
+    if not m:
+        return reply(f'👋 Это бот для входа на сайт «Зубрёжка».\n\nОткрой сайт → нажми <b>«Войти»</b> → кнопку <b>«Войти через Telegram»</b>, и я тебя пущу.\n\n{SITE}')
+    code = m.group(1)
+    row = db.code_get(code)
+    if not row or row['ts'] < now() - CODE_TTL:
+        return reply('⌛ Ссылка для входа устарела. Нажми «Войти» на сайте ещё раз.')
+    if row['st'] == 'ok':
+        return reply('✅ Ты уже вошёл — возвращайся на сайт.')
+    ok, adm, why = membership(uid)
+    name = full_name(u)
+    if not ok:
+        db.code_set(code, uid, name, u.get('username') or '', 'denied', False)
+        if why.startswith('check-failed'):
+            return reply('😕 Не получилось проверить, что ты в чате группы. Попробуй ещё раз через минуту.')
+        return reply('🔒 На сайт пускаем только участников чата группы С-201.\nЕсли ты из группы — попроси добавить тебя в чат и попробуй снова.')
+    db.code_set(code, uid, name, u.get('username') or '', 'ok', adm)
+    return reply(f'✅ Готово, {name}! Вход подтверждён.\n\nВозвращайся на сайт «Зубрёжка» — он уже пускает тебя. 🦷\n\n<i>Если ты не нажимал «Войти» на сайте — просто проигнорируй это сообщение.</i>')
+
+
+# ---------- API сайта ----------
+class Err(Exception):
+    def __init__(self, code, msg=''): super().__init__(msg); self.code = code; self.msg = msg
+
+def need(user):
+    if not user: raise Err('auth', 'Нужно войти')
+    return user
+
+def clean_text(s, limit=MAX_TEXT):
+    s = str(s or '').replace('\r', '').strip()
+    s = re.sub(r'\n{3,}', '\n\n', s)
+    return s[:limit]
+
+def room_ok(room):
+    if not ROOM_RE.match(str(room or '')): raise Err('bad', 'Неизвестный чат')
+    return room
+
+def q_payload(db, lec):
+    qs, cl = db.q_list(lec)
+    by = {}
+    for c in cl: by.setdefault(c['qid'], []).append({'uid': int(c['uid']), 'name': c['name']})
+    return [{'id': q['id'], 'text': q['text'], 'uid': int(q['uid']), 'name': q['name'], 'ts': int(q['ts']), 'who': by.get(q['id'], [])} for q in qs]
+
+
+def api(d):
+    db = get_db()
+    a = d.get('a')
+    user = read_token(d.get('t')) if d.get('t') else None
+    uid = int(user['u']) if user else 0
+
+    if a == 'hello':
+        return {'ok': True, 'bot': ENV('LOGIN_BOT_NAME', ''), 'user': {'uid': uid, 'name': user['n'], 'adm': bool(user['a'])} if user else None}
+
+    if a == 'login_start':
+        if secrets.randbelow(20) == 0: db.codes_gc(now() - 3600)
+        code = secrets.token_urlsafe(18)
+        db.code_new(code, now())
+        return {'code': code, 'bot': ENV('LOGIN_BOT_NAME', '')}
+
+    if a == 'login_check':
+        code = str(d.get('code') or '')[:64]
+        row = db.code_get(code) if code else None
+        if not row or row['ts'] < now() - CODE_TTL: return {'st': 'expired'}
+        if row['st'] == 'denied': return {'st': 'denied'}
+        if row['st'] != 'ok': return {'st': 'wait'}
+        uid2 = int(row['uid']); name = row['name']; adm = bool(row['adm'])
+        db.user_upsert(uid2, name, row['uname'] or '', now())
+        db.code_del(code)
+        return {'st': 'ok', 'token': make_token(uid2, name, adm), 'user': {'uid': uid2, 'name': name, 'uname': row['uname'] or '', 'adm': adm}}
+
+    # --- дальше только для вошедших ---
+    need(user)
+    name = user['n']; adm = bool(user.get('a'))
+
+    if a == 'msgs':
+        room = room_ok(d.get('room'))
+        after = str(d.get('after') or '')
+        if after: return {'msgs': db.msgs_after(room, after[:40], 100)}
+        return {'msgs': db.msgs_last(room, min(int(d.get('n') or 60), 100))}
+
+    if a == 'send':
+        room = room_ok(d.get('room'))
+        text = clean_text(d.get('text'))
+        if not text: raise Err('bad', 'Пустое сообщение')
+        mid = new_id(); db.msg_add(room, mid, uid, name, text, now())
+        after = str(d.get('after') or '')
+        return {'id': mid, 'msgs': db.msgs_after(room, after[:40], 100) if after else db.msgs_last(room, 60)}
+
+    if a == 'del_msg':
+        room = room_ok(d.get('room')); mid = str(d.get('id') or '')[:40]
+        m = db.msg_get(room, mid)
+        if not m: return {'ok': True}
+        if int(m['uid']) != uid and not adm: raise Err('forbidden', 'Можно удалять только свои сообщения')
+        db.msg_del(room, mid); return {'ok': True}
+
+    if a == 'ping':  # для значка на главной: последнее сообщение в болталке
+        r = db.room_last('general')
+        return {'last': {'id': r['id'], 'name': r['name'], 'text': '' if r['del'] else r['text'][:120]} if r else None}
+
+    if a == 'qs':
+        lec = str(d.get('lec') or '')
+        if not LEC_RE.match(lec): raise Err('bad', 'Неизвестная лекция')
+        return {'qs': q_payload(db, lec)}
+
+    if a == 'q_add':
+        lec = str(d.get('lec') or '')
+        if not LEC_RE.match(lec): raise Err('bad', 'Неизвестная лекция')
+        texts = d.get('texts') or []
+        if isinstance(texts, str): texts = [texts]
+        added = 0
+        for t in texts[:40]:
+            t = clean_text(t, 500)
+            if t: db.q_add(lec, new_id(), t, uid, name, now()); added += 1; time.sleep(0.002)
+        if not added: raise Err('bad', 'Пустой вопрос')
+        return {'qs': q_payload(db, lec), 'added': added}
+
+    if a == 'q_claim':
+        lec = str(d.get('lec') or ''); qid = str(d.get('qid') or '')[:40]
+        if not LEC_RE.match(lec) or not db.q_get(lec, qid): raise Err('gone', 'Вопрос уже удалили')
+        db.claim(lec, qid, uid, name, now(), bool(d.get('on')))
+        return {'qs': q_payload(db, lec)}
+
+    if a == 'q_del':
+        lec = str(d.get('lec') or ''); qid = str(d.get('qid') or '')[:40]
+        q = db.q_get(lec, qid) if LEC_RE.match(lec) else None
+        if q:
+            if int(q['uid']) != uid and not adm: raise Err('forbidden', 'Удалить может тот, кто добавил, или админ')
+            db.q_del(lec, qid)
+        return {'qs': q_payload(db, lec)}
+
+    if a == 'q_sum':
+        qn, cn = db.q_summary()
+        out = {r['lec']: [int(r['n']), 0] for r in qn}
+        for r in cn:
+            if r['lec'] in out: out[r['lec']][1] = int(r['n'])
+        return {'sum': out}
+
+    if a == 'prog_get':
+        r = db.prog_get(uid)
+        return {'data': json.loads(r['js']) if r else None, 'ts': int(r['ts']) if r else 0}
+
+    if a == 'prog_put':
+        data = d.get('data')
+        if not isinstance(data, dict): raise Err('bad', 'Нет данных')
+        js = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+        if len(js) > 300_000: raise Err('bad', 'Слишком много данных')
+        ts = now_ms(); db.prog_put(uid, js, ts)
+        return {'ts': ts}
+
+    raise Err('bad', 'Неизвестное действие')
+
+
+# ---------- точка входа ----------
+def cors(headers):
+    origin = headers.get('Origin') or headers.get('origin') or ''
+    ok = origin in ORIGINS or origin.startswith('http://localhost') or origin.startswith('http://127.0.0.1')
+    return {'Access-Control-Allow-Origin': origin if ok else ORIGINS[0], 'Vary': 'Origin',
+            'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '86400'}
+
+def resp(code, obj, headers=None):
+    h = {'Content-Type': 'application/json; charset=utf-8'}; h.update(headers or {})
+    return {'statusCode': code, 'headers': h, 'body': json.dumps(obj, ensure_ascii=False), 'isBase64Encoded': False}
+
+def do_setup(context, headers):
+    out = {'tables': get_db().setup()}
+    tok = ENV('LOGIN_BOT_TOKEN', '')
+    if tok:
+        fid = getattr(context, 'function_name', '') or ''
+        url = ENV('PUBLIC_URL', '') or (f'https://functions.yandexcloud.net/{fid}' if fid else '')
+        try:
+            out['webhook'] = tg_call(tok, 'setWebhook', url=url + ('&' if '?' in url else '?') + 'tg=1',
+                                     secret_token=tg_secret(), allowed_updates=['message'], drop_pending_updates='true')
+            me = tg_call(tok, 'getMe').get('result') or {}
+            out['bot'] = me.get('username')
+            if me.get('username') and not ENV('LOGIN_BOT_NAME'): out['hint'] = f"Добавь переменную LOGIN_BOT_NAME={me['username']}"
+        except Exception as e:
+            out['webhook_error'] = str(e)
+    else:
+        out['webhook'] = 'нет LOGIN_BOT_TOKEN'
+    if ENV('GROUP_CHAT_ID') and (ENV('MAIN_BOT_TOKEN') or tok):
+        try:
+            r = tg_call(ENV('MAIN_BOT_TOKEN') or tok, 'getChat', chat_id=ENV('GROUP_CHAT_ID'))
+            out['group'] = (r.get('result') or {}).get('title')
+        except Exception as e:
+            out['group_error'] = str(e)
+    return out
+
+def handler(event, context=None):
+    headers = event.get('headers') or {}
+    method = (event.get('httpMethod') or 'POST').upper()
+    qs = event.get('queryStringParameters') or {}
+    body = event.get('body') or ''
+    if event.get('isBase64Encoded') and body: body = base64.b64decode(body).decode('utf-8', 'replace')
+    ch = cors(headers)
+
+    if method == 'OPTIONS': return {'statusCode': 204, 'headers': ch, 'body': ''}
+
+    if qs.get('tg'):  # вебхук Telegram
+        got = headers.get('X-Telegram-Bot-Api-Secret-Token') or headers.get('x-telegram-bot-api-secret-token') or ''
+        if not hmac.compare_digest(got, tg_secret()): return resp(403, {'err': 'forbidden'})
+        try:
+            r = handle_tg(json.loads(body or '{}'))
+        except Exception as e:
+            print('tg error', repr(e)); r = None
+        return resp(200, r or {})
+
+    if qs.get('setup') is not None and method == 'GET':
+        if not setup_key() or not hmac.compare_digest(str(qs.get('setup')), setup_key()): return resp(403, {'err': 'Неверный ключ настройки'})
+        return resp(200, do_setup(context, headers))
+
+    if method == 'GET':
+        return resp(200, {'ok': True, 'service': 'zubrezhka-api'}, ch)
+
+    try:
+        d = json.loads(body or '{}')
+        if not isinstance(d, dict): raise Err('bad', 'Плохой запрос')
+        return resp(200, api(d), ch)
+    except Err as e:
+        return resp(200, {'err': e.code, 'msg': e.msg}, ch)
+    except Exception as e:
+        print('api error', repr(e))
+        return resp(200, {'err': 'server', 'msg': 'Ошибка сервера, попробуй ещё раз'}, ch)

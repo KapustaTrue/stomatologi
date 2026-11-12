@@ -1,0 +1,80 @@
+# Сервер «Зубрёжки» (вход, болталка, «Кто что отвечает») — облачная функция в Яндекс Облаке.
+# Обновляется сам при изменениях в папке server/. Доступ к Облаку — без ключей, через федерацию
+# (сервисный аккаунт zubrezhka-sa доверяет только ветке main этого репозитория).
+# Нужен секрет репозитория LOGIN_BOT_TOKEN (токен бота @zubrezhka_s201_bot); TELEGRAM_BOT_TOKEN уже есть (бот домашки).
+name: Сервер (Яндекс Облако)
+
+on:
+  push:
+    branches: [main]
+    paths: ['server/**', '.github/workflows/deploy-server.yml']
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+env:
+  YC_FOLDER_ID: b1gq4ga3s4rlj26e3d23
+  YC_SA_ID: ajejuekrvs6kro23okm0
+  YDB_ENDPOINT: grpcs://ydb.serverless.yandexcloud.net:2135/?database=/ru-central1/b1gsqoj9pce8c70okb5o/etn0phfrrctsmf79as6i
+  LOGIN_BOT_NAME: zubrezhka_s201_bot
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Проверка кода сервера
+        run: |
+          pip install -q ydb
+          python3 server/test_server.py
+
+      - name: Чат группы из bot/config.json
+        id: cfg
+        run: echo "chat=$(python3 -c "import json;print(json.load(open('bot/config.json')).get('chat',''))")" >> "$GITHUB_OUTPUT"
+
+      - name: Выкладка функции
+        id: fn
+        uses: yc-actions/yc-sls-function@v5
+        with:
+          yc-sa-id: ${{ env.YC_SA_ID }}
+          folder-id: ${{ env.YC_FOLDER_ID }}
+          function-name: zubrezhka-api
+          runtime: python312
+          entrypoint: index.handler
+          memory: 256Mb
+          execution-timeout: '10'
+          service-account: ${{ env.YC_SA_ID }}
+          source-root: server
+          include: |
+            index.py
+            db.py
+            requirements.txt
+          environment: |
+            YDB_ENDPOINT=${{ env.YDB_ENDPOINT }}
+            GROUP_CHAT_ID=${{ steps.cfg.outputs.chat }}
+            LOGIN_BOT_NAME=${{ env.LOGIN_BOT_NAME }}
+            LOGIN_BOT_TOKEN=${{ secrets.LOGIN_BOT_TOKEN }}
+            MAIN_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+            SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+            ADMIN_IDS=${{ vars.ADMIN_IDS }}
+
+      - name: Вебхук бота для входа
+        env:
+          LOGIN_BOT_TOKEN: ${{ secrets.LOGIN_BOT_TOKEN }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          FUNCTION_ID: ${{ steps.fn.outputs.function-id }}
+        run: |
+          if [ -z "$LOGIN_BOT_TOKEN" ]; then echo "::warning::Нет секрета LOGIN_BOT_TOKEN — вебхук не поставлен"; exit 0; fi
+          SECRET=$(cd server && python3 -c "import index; print(index.tg_secret())")
+          URL="https://functions.yandexcloud.net/${FUNCTION_ID}?tg=1"
+          curl -sS "https://api.telegram.org/bot${LOGIN_BOT_TOKEN}/setWebhook" \
+            --data-urlencode "url=${URL}" --data-urlencode "secret_token=${SECRET}" \
+            --data-urlencode 'allowed_updates=["message"]' | python3 -c "import sys,json; d=json.load(sys.stdin); print('setWebhook:', d.get('ok'), d.get('description'))"
+          echo "### Адрес сервера: https://functions.yandexcloud.net/${FUNCTION_ID}" >> "$GITHUB_STEP_SUMMARY"
