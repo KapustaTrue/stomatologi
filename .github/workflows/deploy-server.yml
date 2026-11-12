@@ -75,6 +75,6 @@ jobs:
             LOGIN_BOT_TOKEN=${{ secrets.LOGIN_BOT_TOKEN }}
             MAIN_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
 
+      # Бот входа работает не через вебхук (Telegram не достаёт до Облака), а через bot/login_relay.py в GitHub Actions.
       - name: Адрес сервера
-        run: echo "### Адрес сервера: https://functions.yandexcloud.net/${{ steps.fn.outputs.function-id }}" >> "$GITHUB_STEP_SUMMARY"
-        # Бот входа работает не через вебхук (Telegram не достаёт до Облака), а через bot/login_relay.py в GitHub Actions.
+        run: echo "### Адрес сервера https://functions.yandexcloud.net/${{ steps.fn.outputs.function-id }}" >> "$GITHUB_STEP_SUMMARY"
