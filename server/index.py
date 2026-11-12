@@ -306,6 +306,17 @@ def handler(event, context=None):
         if not setup_key() or not hmac.compare_digest(str(qs.get('setup')), setup_key()): return resp(403, {'err': 'Неверный ключ настройки'})
         return resp(200, do_setup(context, headers))
 
+    if qs.get('net') is not None and method == 'GET':  # доступность сайтов из Облака
+        import socket
+        out = {}
+        for host in ('api.telegram.org', 'ya.ru', 'api.github.com', 'raw.githubusercontent.com'):
+            t0 = time.time()
+            try:
+                urllib.request.urlopen(f'https://{host}/', timeout=2.5).read(100); out[host] = f'ok {time.time()-t0:.2f}s'
+            except urllib.error.HTTPError as e: out[host] = f'http {e.code} {time.time()-t0:.2f}s'
+            except Exception as e: out[host] = f'fail {type(e).__name__} {time.time()-t0:.2f}s'
+        return resp(200, out, ch)
+
     if qs.get('diag') is not None and method == 'GET':  # проверка связки с Telegram (без секретов)
         out = {'bot_name': ENV('LOGIN_BOT_NAME', ''), 'has_login_token': bool(ENV('LOGIN_BOT_TOKEN')), 'has_main_token': bool(ENV('MAIN_BOT_TOKEN')), 'group_set': bool(ENV('GROUP_CHAT_ID'))}
         try:
