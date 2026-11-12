@@ -5,7 +5,7 @@ import os, json
 TABLES = {
     'codes':  ('code Utf8, ts Int64, uid Int64, name Utf8, uname Utf8, st Utf8, adm Bool', 'code'),
     'users':  ('uid Int64, name Utf8, uname Utf8, ts Int64', 'uid'),
-    'msgs':   ('room Utf8, id Utf8, uid Int64, name Utf8, text Utf8, ts Int64, del Bool', 'room, id'),
+    'msgs':   ('room Utf8, id Utf8, uid Int64, name Utf8, text Utf8, ts Int64, del Bool, ed Int64', 'room, id'),
     'qs':     ('lec Utf8, id Utf8, text Utf8, uid Int64, name Utf8, ts Int64', 'lec, id'),
     'claims': ('lec Utf8, qid Utf8, uid Int64, name Utf8, ts Int64', 'lec, qid, uid'),
     'prog':   ('uid Int64, js Utf8, ts Int64', 'uid'),
@@ -19,7 +19,7 @@ class Base:
     # --- общие ---
     def msg_row(self, r):
         return {'id': r['id'], 'uid': int(r['uid']), 'name': r['name'], 'text': '' if r['del'] else r['text'],
-                'ts': int(r['ts']), 'del': bool(r['del'])}
+                'ts': int(r['ts']), 'del': bool(r['del']), 'ed': int(r.get('ed') or 0)}
 
 
 # ======================= SQLite (локально) =======================
@@ -50,7 +50,8 @@ class SqliteDB(Base):
 
     def user_upsert(self, uid, name, uname, ts): self._q('INSERT OR REPLACE INTO users VALUES (?,?,?,?)', uid, name, uname, ts)
 
-    def msg_add(self, room, id, uid, name, text, ts): self._q('INSERT INTO msgs VALUES (?,?,?,?,?,?,0)', room, id, uid, name, text, ts)
+    def msg_add(self, room, id, uid, name, text, ts): self._q('INSERT INTO msgs (room, id, uid, name, text, ts, del) VALUES (?,?,?,?,?,?,0)', room, id, uid, name, text, ts)
+    def msg_edit(self, room, id, text, ts): self._q('UPDATE msgs SET text=?, ed=? WHERE room=? AND id=?', text, ts, room, id)
     def msg_get(self, room, id):
         r = self._q('SELECT * FROM msgs WHERE room=? AND id=?', room, id); return r[0] if r else None
     def msg_del(self, room, id): self._q("UPDATE msgs SET del=1, text='' WHERE room=? AND id=?", room, id)
@@ -147,6 +148,7 @@ class YdbDB(Base):
                 room=room, id=id, uid=uid, name=name, text=text, ts=ts, f=False)
     def msg_get(self, room, id): r = self._rows('SELECT * FROM msgs WHERE room = $room AND id = $id;', room=room, id=id); return r[0] if r else None
     def msg_del(self, room, id): self._q('UPDATE msgs SET del = $t, text = $e WHERE room = $room AND id = $id;', room=room, id=id, t=True, e='')
+    def msg_edit(self, room, id, text, ts): self._q('UPDATE msgs SET text = $text, ed = $ts WHERE room = $room AND id = $id;', room=room, id=id, text=text, ts=ts)
     def msgs_last(self, room, n):
         rows = self._rows(f'SELECT * FROM msgs WHERE room = $room ORDER BY room DESC, id DESC LIMIT {int(n)};', room=room)
         return [self.msg_row(r) for r in reversed(rows)]

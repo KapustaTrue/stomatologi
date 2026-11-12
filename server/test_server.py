@@ -89,6 +89,11 @@ assert call({'a': 'del_msg', 't': masha, 'room': 'general', 'id': r['id']})['err
 assert call({'a': 'del_msg', 't': lesha, 'room': 'general', 'id': first_id})['ok']                  # админ может
 m = call({'a': 'msgs', 't': masha, 'room': 'general'})['msgs'][0]; assert m['del'] and m['text'] == ''
 assert call({'a': 'ping', 't': masha})['last']['text'] == 'хай'
+hai = [m for m in call({'a': 'msgs', 't': masha, 'room': 'general'})['msgs'] if m['text'] == 'хай'][0]
+assert call({'a': 'edit_msg', 't': masha, 'room': 'general', 'id': hai['id'], 'text': 'x'})['err'] == 'forbidden'
+r = call({'a': 'edit_msg', 't': lesha, 'room': 'general', 'id': hai['id'], 'text': 'хай всем'}); assert r['msg']['text'] == 'хай всем' and r['msg']['ed'] > 0
+assert call({'a': 'edit_msg', 't': lesha, 'room': 'general', 'id': first_id, 'text': 'x'})['err'] == 'gone'
+assert call({'a': 'ping', 't': masha})['last']['text'] == 'хай всем'
 assert call({'a': 'send', 't': masha, 'room': 'lec:gen-5', 'text': 'по лекции'})['msgs'][0]['text'] == 'по лекции'
 
 # --- вопросы

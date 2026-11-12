@@ -211,6 +211,16 @@ def api(d):
         if int(m['uid']) != uid and not adm: raise Err('forbidden', 'Можно удалять только свои сообщения')
         db.msg_del(room, mid); return {'ok': True}
 
+    if a == 'edit_msg':
+        room = room_ok(d.get('room')); mid = str(d.get('id') or '')[:40]
+        text = clean_text(d.get('text'))
+        if not text: raise Err('bad', 'Пустое сообщение')
+        m = db.msg_get(room, mid)
+        if not m or m['del']: raise Err('gone', 'Сообщение уже удалено')
+        if int(m['uid']) != uid: raise Err('forbidden', 'Изменять можно только свои сообщения')
+        db.msg_edit(room, mid, text, now())
+        return {'msg': db.msg_row(db.msg_get(room, mid))}
+
     if a == 'ping':  # для значка на главной: последнее сообщение в болталке
         r = db.room_last('general')
         return {'last': {'id': r['id'], 'name': r['name'], 'text': '' if r['del'] else r['text'][:120]} if r else None}

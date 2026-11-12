@@ -397,9 +397,20 @@ html:not([data-theme=dark]) .sheet{background:#fff}
 .bubble small{display:block;text-align:right;font-size:11px;opacity:.6;margin-top:1px}
 .msg.gone .bubble{opacity:.6;font-size:13px}
 .msg[data-mid]{cursor:pointer}
-.msg-del{display:none;margin-top:6px;font-size:13px;font-weight:700;color:#d23b5c;background:#fff;border-radius:10px;padding:4px 10px}
-.msg.sel .msg-del{display:block}
-.msg-del.sure{background:#d23b5c;color:#fff}
+.msg-menu{display:none;gap:6px;margin-top:8px;flex-wrap:wrap}
+.msg.sel .msg-menu{display:flex}
+.msg-menu button{font-size:13px;font-weight:700;color:var(--acc-ink);background:#fff;border-radius:10px;padding:5px 11px}
+.msg-menu .msg-del{color:#d23b5c}
+.msg-menu .msg-del.sure{background:#d23b5c;color:#fff}
+.msg.sel .bubble,.msg.editing .bubble{box-shadow:0 0 0 2px var(--acc)}
+.msg.mine.sel .bubble,.msg.mine.editing .bubble{box-shadow:0 0 0 2px #ffd23f}
+.chat-top span{font-size:11.5px;opacity:.85}
+.who-hint{margin:-6px 2px 10px;font-size:12.5px;color:var(--muted)}
+.composer{flex-wrap:wrap}
+.composer textarea{min-width:0}
+.edit-bar{flex-basis:100%;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;color:var(--acc-ink);background:var(--acc-soft);border-radius:12px;padding:6px 6px 6px 12px}
+.edit-bar[hidden]{display:none}
+.composer .edit-bar button{width:auto;height:auto;border-radius:10px;background:var(--card-solid,#fff);color:var(--acc-ink);font-size:13px;padding:5px 10px}
 .composer{display:flex;gap:8px;align-items:flex-end;margin-top:10px}
 .composer.fixed{position:fixed;left:0;right:0;bottom:0;z-index:25;margin:0;padding:10px max(12px,calc((100vw - 760px)/2 + 12px)) calc(10px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
 .composer textarea{flex:1;resize:none;border:1.5px solid var(--line);background:var(--card-solid,var(--card));color:var(--ink);border-radius:20px;padding:10px 14px;font:inherit;font-size:16px;line-height:1.35;max-height:140px;outline:none}
@@ -442,7 +453,8 @@ body.in-chat .fab-top{display:none}
 .locked .join-go{display:inline-flex;width:auto;margin-top:2px}
 .locked .lk-j{margin:16px auto 6px}
 html[data-theme=dark] .lg-st.bad{background:rgba(224,82,122,.18);color:#ffb3c6}
-html[data-theme=dark] .msg-del{background:var(--card-solid)}
+html[data-theme=dark] .msg-menu button{background:var(--card-solid)}
+html[data-theme=dark] .edit-bar{background:rgba(123,97,214,.22);color:#ddd3ff}
 html[data-theme=dark] .who-free{color:#f2c46b}
 html[data-theme=dark] .who-intro{background:rgba(123,97,214,.2);color:#ddd3ff}
 
@@ -9228,11 +9240,11 @@ function progSync(first){
 /* ---------- чат (болталка и обсуждения под лекциями) ---------- */
 const CHAT = { room: null, msgs: [], last: '', sig: '', tmr: null, gen: 0, idle: 0, full: 0, page: false };
 function sxStop(){ clearTimeout(CHAT.tmr); CHAT.gen++; CHAT.room = null; clearTimeout(WHO.tmr); WHO.gen++; WHO.lec = null; document.body.classList.remove('in-chat'); }
-function chatStart(room, page){ clearTimeout(CHAT.tmr); CHAT.gen++; Object.assign(CHAT, { room, page, msgs: [], last: '', sig: '', idle: 0, full: 0 }); chatLoad(true); }
+function chatStart(room, page){ clearTimeout(CHAT.tmr); CHAT.gen++; Object.assign(CHAT, { room, page, msgs: [], last: '', sig: '', idle: 0, full: 0, editing: null }); chatLoad(true); }
 function chatLoad(full){
   const g = CHAT.gen, room = CHAT.room; if (!room) return;
   clearTimeout(CHAT.tmr);
-  const doFull = full || !CHAT.last || Date.now() - CHAT.full > 60000;
+  const doFull = full || !CHAT.last || Date.now() - CHAT.full > 30000;
   api('msgs', doFull ? { room } : { room, after: CHAT.last })
     .then(d => { if (g === CHAT.gen){ chatMerge(d.msgs || [], doFull); if (doFull) CHAT.full = Date.now(); } })
     .catch(e => { if (g === CHAT.gen && !CHAT.msgs.length){ const el = $('#chatList'); if (el && e.code !== 'auth') el.innerHTML = '<div class="empty">📡 Не получилось загрузить сообщения — попробую ещё раз…</div>'; } })
@@ -9248,7 +9260,7 @@ function chatMerge(list, full){
   else { const have = new Set(CHAT.msgs.map(m => m.id)); list.forEach(m => { if (!have.has(m.id)) CHAT.msgs.push(m); }); }
   CHAT.msgs.sort((a, b) => a.id < b.id ? -1 : 1);
   const newest = CHAT.msgs.length ? CHAT.msgs[CHAT.msgs.length - 1].id : '';
-  const sig = CHAT.msgs.map(m => m.id + (m.del ? 'x' : '')).join(',');
+  const sig = CHAT.msgs.map(m => m.id + (m.del ? 'x' : '') + (m.ed || '')).join(',');
   CHAT.idle = newest !== CHAT.last ? 0 : CHAT.idle + 1;
   CHAT.last = newest;
   if (CHAT.room === 'general' && newest) rawSet('chatSeen', newest);
@@ -9267,10 +9279,10 @@ function msgHTML(m, prev){
   const time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   if (m.del) return sep + `<div class="msg gone${me ? ' mine' : ''}"><span class="ava-sp"></span><div class="bubble"><i>сообщение удалено</i></div></div>`;
   const canDel = me || (SX.user && SX.user.adm);
-  return sep + `<div class="msg${me ? ' mine' : ''}${cont ? ' cont' : ''}"${canDel ? ` data-mid="${m.id}"` : ''}>
+  return sep + `<div class="msg${me ? ' mine' : ''}${cont ? ' cont' : ''}${CHAT.editing === m.id ? ' editing' : ''}"${canDel ? ` data-mid="${m.id}"` : ''}>
     ${!cont ? ava(m.uid, m.name) : '<span class="ava-sp"></span>'}
-    <div class="bubble">${!cont ? `<b${me ? '' : ` style="color:${avaColor(m.uid)}"`}>${esc(m.name)}${me ? ' <i class="me-t">(ты)</i>' : ''}</b>` : ''}<span class="mt">${linkify(m.text)}</span><small>${time}</small>
-    ${canDel ? `<button class="msg-del" data-sx="mdel" data-mid="${m.id}">🗑 Удалить</button>` : ''}</div></div>`;
+    <div class="bubble">${!cont ? `<b${me ? '' : ` style="color:${avaColor(m.uid)}"`}>${esc(m.name)}${me ? ' <i class="me-t">(ты)</i>' : ''}</b>` : ''}<span class="mt">${linkify(m.text)}</span><small>${m.ed ? 'изменено · ' : ''}${time}</small>
+    ${canDel ? `<div class="msg-menu">${me ? `<button data-sx="medit" data-mid="${m.id}">✏️ Изменить</button>` : ''}<button class="msg-del" data-sx="mdel" data-mid="${m.id}">🗑 Удалить</button></div>` : ''}</div></div>`;
 }
 function chatRender(){
   const el = $('#chatList'); if (!el) return;
@@ -9286,11 +9298,31 @@ function chatToBottom(){
   if (CHAT.page) requestAnimationFrame(() => window.scrollTo(0, document.documentElement.scrollHeight));
   else el.scrollTop = el.scrollHeight;
 }
-const composerHTML = kind => `<form class="composer${kind === 'chat' ? ' fixed' : ''}" data-sxform="send"><textarea rows="1" maxlength="1000" placeholder="${kind === 'chat' ? 'Сообщение…' : 'Написать по лекции…'}" enterkeyhint="send"></textarea><button type="submit" aria-label="Отправить">➤</button></form>`;
+const composerHTML = kind => `<form class="composer${kind === 'chat' ? ' fixed' : ''}" data-sxform="send"><div class="edit-bar" hidden><span>✏️ Изменение сообщения</span><button type="button" data-sx="mcancel">Отмена</button></div><textarea rows="1" maxlength="1000" placeholder="${kind === 'chat' ? 'Сообщение…' : 'Написать по лекции…'}" enterkeyhint="send"></textarea><button type="submit" aria-label="Отправить">➤</button></form>`;
+function chatEdit(id){
+  const m = CHAT.msgs.find(x => x.id === id), f = $('form[data-sxform="send"]'); if (!m || !f) return;
+  CHAT.editing = id; const ta = f.querySelector('textarea');
+  ta.value = m.text; f.querySelector('.edit-bar').hidden = false; f.classList.add('is-edit');
+  ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus();
+  CHAT.sig = ''; chatMerge([], false);
+}
+function chatEditEnd(clear){
+  const f = $('form[data-sxform="send"]'); CHAT.editing = null;
+  if (f){ f.querySelector('.edit-bar').hidden = true; f.classList.remove('is-edit'); if (clear){ const ta = f.querySelector('textarea'); ta.value = ''; ta.style.height = ''; } }
+  CHAT.sig = ''; chatMerge([], false);
+}
 function chatSend(form){
-  const ta = form.querySelector('textarea'), btn = form.querySelector('button'), text = ta.value.trim();
+  const ta = form.querySelector('textarea'), btn = form.querySelector('button[type=submit]'), text = ta.value.trim();
   if (!text || !CHAT.room || btn.disabled) return;
   btn.disabled = true; const g = CHAT.gen;
+  if (CHAT.editing){
+    const id = CHAT.editing;
+    api('edit_msg', { room: CHAT.room, id, text }).then(d => {
+      if (g !== CHAT.gen) return; const i = CHAT.msgs.findIndex(x => x.id === id); if (i >= 0 && d.msg) CHAT.msgs[i] = d.msg;
+      chatEditEnd(true); toast('✏️ Сообщение изменено');
+    }).catch(e => { sxErr(e); if (e.code === 'gone') chatEditEnd(true); }).finally(() => { btn.disabled = false; });
+    return;
+  }
   api('send', { room: CHAT.room, text, after: CHAT.last }).then(d => {
     ta.value = ''; ta.style.height = '';
     if (g === CHAT.gen){ chatMerge(d.msgs || [], false); chatToBottom(); CHAT.idle = 0; chatSchedule(); }
@@ -9301,7 +9333,7 @@ function viewChat(){
   topBar('💬 Болталка группы', '', accBtn());
   if (!loggedIn()){ app.innerHTML = lockedHTML('Болталка группы', 'Общий чат С-201 прямо на сайте: обсудить пары, домашку и всё подряд.'); return; }
   document.body.classList.add('in-chat');
-  app.innerHTML = `<div class="chat-top">🔒 Видят только участники группы С-201</div><div id="chatList" class="chat-list page"><div class="empty">Загружаю сообщения…</div></div>${composerHTML('chat')}`;
+  app.innerHTML = `<div class="chat-top">🔒 Видят только участники группы С-201<br><span>Нажми на своё сообщение, чтобы изменить или удалить</span></div><div id="chatList" class="chat-list page"><div class="empty">Загружаю сообщения…</div></div>${composerHTML('chat')}`;
   chatStart('general', true);
 }
 
@@ -9316,7 +9348,7 @@ function renderWho(l, pane){
     <div id="whoSum" class="who-sum"></div>
     <div id="whoList"><div class="empty">Загружаю…</div></div>
     <form class="who-add" data-sxform="q"><textarea rows="3" maxlength="8000" placeholder="Препод назвал вопрос, которого нет в списке? Добавь — можно списком, каждый с новой строки"></textarea><button class="primary" type="submit">➕ Добавить</button></form>
-    <h3 class="who-h">💬 Обсуждение лекции</h3>
+    <h3 class="who-h">💬 Обсуждение лекции</h3><p class="who-hint">Нажми на своё сообщение, чтобы изменить или удалить</p>
     <div id="chatList" class="chat-list box"><div class="empty">Загружаю…</div></div>
     ${composerHTML('lec')}`;
   clearTimeout(WHO.tmr); WHO.gen++; Object.assign(WHO, { lec: l.id, qs: [], pc: {}, sig: '' });
@@ -9415,11 +9447,13 @@ document.addEventListener('click', e => {
     const g = WHO.gen;
     api('q_del', { lec: WHO.lec, qid: t.dataset.qid }).then(d => { if (g === WHO.gen) whoSet(d.qs, d.pc); toast('Вопрос удалён'); }).catch(sxErr);
   }
+  else if (a === 'medit'){ e.stopPropagation(); document.querySelectorAll('.msg.sel').forEach(x => x.classList.remove('sel')); chatEdit(t.dataset.mid); }
+  else if (a === 'mcancel') chatEditEnd(true);
   else if (a === 'mdel'){
     e.stopPropagation();
     if (!t.classList.contains('sure')){ t.classList.add('sure'); t.textContent = 'Точно удалить?'; return; }
     const g = CHAT.gen, id = t.dataset.mid;
-    api('del_msg', { room: CHAT.room, id }).then(() => { if (g !== CHAT.gen) return; const m = CHAT.msgs.find(x => x.id === id); if (m){ m.del = true; m.text = ''; } CHAT.sig = ''; chatMerge([], false); }).catch(sxErr);
+    api('del_msg', { room: CHAT.room, id }).then(() => { if (g !== CHAT.gen) return; if (CHAT.editing === id) chatEditEnd(true); const m = CHAT.msgs.find(x => x.id === id); if (m){ m.del = true; m.text = ''; } CHAT.sig = ''; chatMerge([], false); }).catch(sxErr);
   }
 });
 document.addEventListener('submit', e => {
@@ -9429,6 +9463,7 @@ document.addEventListener('submit', e => {
 });
 document.addEventListener('keydown', e => { // Enter — отправить (на компьютере), Shift+Enter — новая строка
   const ta = e.target.closest && e.target.closest('form[data-sxform="send"] textarea');
+  if (ta && e.key === 'Escape' && CHAT.editing){ e.preventDefault(); chatEditEnd(true); return; }
   if (ta && e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer: coarse)').matches){ e.preventDefault(); chatSend(ta.form); }
 });
 document.addEventListener('input', e => { // поле сообщения растёт по тексту
