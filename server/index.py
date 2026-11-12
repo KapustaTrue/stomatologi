@@ -18,6 +18,7 @@ TOKEN_TTL = 120 * 86400     # вход держится 120 дней
 MAX_TEXT = 1000
 ROOM_RE = re.compile(r'^(general|lec:[a-z0-9-]{1,40})$')
 LEC_RE = re.compile(r'^[a-z0-9-]{1,40}$')
+PLAN_RE = re.compile(r'^p\d{1,3}$')   # вопросы по плану лекции (лежат в данных сайта, не в базе)
 
 
 def now(): return int(time.time())
@@ -150,10 +151,12 @@ def room_ok(room):
     return room
 
 def q_payload(db, lec):
+    """Вопросы группы (qs) + кто взял вопросы по плану лекции (pc: {'p0': [{uid,name}], ...})."""
     qs, cl = db.q_list(lec)
     by = {}
     for c in cl: by.setdefault(c['qid'], []).append({'uid': int(c['uid']), 'name': c['name']})
-    return [{'id': q['id'], 'text': q['text'], 'uid': int(q['uid']), 'name': q['name'], 'ts': int(q['ts']), 'who': by.get(q['id'], [])} for q in qs]
+    return {'qs': [{'id': q['id'], 'text': q['text'], 'uid': int(q['uid']), 'name': q['name'], 'ts': int(q['ts']), 'who': by.get(q['id'], [])} for q in qs],
+            'pc': {k: v for k, v in by.items() if PLAN_RE.match(k)}}
 
 
 def api(d):
@@ -215,7 +218,7 @@ def api(d):
     if a == 'qs':
         lec = str(d.get('lec') or '')
         if not LEC_RE.match(lec): raise Err('bad', 'Неизвестная лекция')
-        return {'qs': q_payload(db, lec)}
+        return q_payload(db, lec)
 
     if a == 'q_add':
         lec = str(d.get('lec') or '')
@@ -227,13 +230,13 @@ def api(d):
             t = clean_text(t, 500)
             if t: db.q_add(lec, new_id(), t, uid, name, now()); added += 1; time.sleep(0.002)
         if not added: raise Err('bad', 'Пустой вопрос')
-        return {'qs': q_payload(db, lec), 'added': added}
+        return dict(q_payload(db, lec), added=added)
 
     if a == 'q_claim':
         lec = str(d.get('lec') or ''); qid = str(d.get('qid') or '')[:40]
-        if not LEC_RE.match(lec) or not db.q_get(lec, qid): raise Err('gone', 'Вопрос уже удалили')
+        if not LEC_RE.match(lec) or not (PLAN_RE.match(qid) or db.q_get(lec, qid)): raise Err('gone', 'Вопрос уже удалили')
         db.claim(lec, qid, uid, name, now(), bool(d.get('on')))
-        return {'qs': q_payload(db, lec)}
+        return q_payload(db, lec)
 
     if a == 'q_del':
         lec = str(d.get('lec') or ''); qid = str(d.get('qid') or '')[:40]
@@ -241,13 +244,13 @@ def api(d):
         if q:
             if int(q['uid']) != uid and not adm: raise Err('forbidden', 'Удалить может тот, кто добавил, или админ')
             db.q_del(lec, qid)
-        return {'qs': q_payload(db, lec)}
+        return q_payload(db, lec)
 
     if a == 'q_sum':
         qn, cn = db.q_summary()
         out = {r['lec']: [int(r['n']), 0] for r in qn}
         for r in cn:
-            if r['lec'] in out: out[r['lec']][1] = int(r['n'])
+            out.setdefault(r['lec'], [0, 0])[1] = int(r['n'])
         return {'sum': out}
 
     if a == 'prog_get':

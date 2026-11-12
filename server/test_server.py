@@ -103,6 +103,11 @@ r = call({'a': 'q_del', 't': lesha, 'lec': 'gen-5', 'qid': q2}); assert len(r['q
 r = call({'a': 'q_add', 't': lesha, 'lec': 'gen-5', 'texts': 'Мой вопрос'}); q3 = r['qs'][-1]['id']
 assert call({'a': 'q_del', 't': masha, 'lec': 'gen-5', 'qid': q3})['err'] == 'forbidden'
 assert call({'a': 'q_claim', 't': masha, 'lec': 'gen-5', 'qid': 'nope', 'on': True})['err'] == 'gone'
+# вопросы по плану лекции (p0, p1…) — берутся без добавления в базу
+r = call({'a': 'q_claim', 't': masha, 'lec': 'gen-7', 'qid': 'p2', 'on': True}); assert r['pc'] == {'p2': [{'uid': 1, 'name': 'Маша'}]} and r['qs'] == []
+assert call({'a': 'qs', 't': lesha, 'lec': 'gen-7'})['pc']['p2'][0]['name'] == 'Маша'
+assert call({'a': 'q_sum', 't': masha})['sum']['gen-7'] == [0, 1]
+r = call({'a': 'q_claim', 't': masha, 'lec': 'gen-7', 'qid': 'p2', 'on': False}); assert r['pc'] == {}
 assert call({'a': 'qs', 't': masha, 'lec': '../x'})['err'] == 'bad'
 r = call({'a': 'q_del', 't': masha, 'lec': 'gen-5', 'qid': q1}); assert [q['text'] for q in r['qs']] == ['Мой вопрос']
 

@@ -1413,64 +1413,73 @@ function viewChat(){
 }
 
 /* ---------- «Кто что отвечает» под лекцией ---------- */
-const WHO = { lec: null, qs: [], tmr: null, gen: 0, sig: '' };
+const WHO = { lec: null, qs: [], pc: {}, tmr: null, gen: 0, sig: '' };
+// вопросы по плану лекции = вопросы устного опроса (ORAL[id]); id на сервере — p0, p1…
+const whoPlan = lec => (typeof ORAL !== 'undefined' && ORAL[lec]) || [];
 let WHOSUM = { at: 0, data: null };
 function renderWho(l, pane){
   if (!loggedIn()){ pane.innerHTML = lockedHTML('Кто что отвечает', 'Препод назвал вопросы к опросу? Добавьте их сюда и разберите: каждый берёт свой вопрос, и сразу видно, что осталось свободным.'); return; }
-  pane.innerHTML = `<div class="who-intro"><b>🙋 Кто что отвечает</b><span>Препод назвал вопросы к опросу? Добавь их сюда и нажми <b>«Беру»</b> на своём — все видят, кто что готовит и что ещё свободно.</span></div>
+  pane.innerHTML = `<div class="who-intro"><b>🙋 Кто что отвечает</b><span>Вопросы по лекции уже здесь — по плану преподавателя. Выбери свой и нажми <b>«✋ Беру»</b>: все видят, кто что готовит и что ещё свободно. Под каждым вопросом — ответ.</span></div>
     <div id="whoSum" class="who-sum"></div>
     <div id="whoList"><div class="empty">Загружаю…</div></div>
-    <form class="who-add" data-sxform="q"><textarea rows="3" maxlength="8000" placeholder="Вопросы преподавателя — можно сразу списком, каждый с новой строки"></textarea><button class="primary" type="submit">➕ Добавить</button></form>
+    <form class="who-add" data-sxform="q"><textarea rows="3" maxlength="8000" placeholder="Препод назвал вопрос, которого нет в списке? Добавь — можно списком, каждый с новой строки"></textarea><button class="primary" type="submit">➕ Добавить</button></form>
     <h3 class="who-h">💬 Обсуждение лекции</h3>
     <div id="chatList" class="chat-list box"><div class="empty">Загружаю…</div></div>
     ${composerHTML('lec')}`;
-  clearTimeout(WHO.tmr); WHO.gen++; Object.assign(WHO, { lec: l.id, qs: [], sig: '' });
+  clearTimeout(WHO.tmr); WHO.gen++; Object.assign(WHO, { lec: l.id, qs: [], pc: {}, sig: '' });
   whoLoad(); chatStart('lec:' + l.id, false);
 }
 function whoLoad(){
   const g = WHO.gen, lec = WHO.lec; if (!lec) return;
   clearTimeout(WHO.tmr);
-  api('qs', { lec }).then(d => { if (g === WHO.gen) whoSet(d.qs); })
+  api('qs', { lec }).then(d => { if (g === WHO.gen) whoSet(d.qs, d.pc); })
     .catch(() => { if (g === WHO.gen && !WHO.qs.length){ const el = $('#whoList'); if (el) el.innerHTML = '<div class="empty">📡 Не получилось загрузить — попробую ещё раз…</div>'; } })
     .finally(() => { if (g === WHO.gen) WHO.tmr = setTimeout(whoLoad, document.visibilityState === 'visible' ? 15000 : 45000); });
 }
-function whoSet(qs){
-  WHO.qs = qs || []; WHOSUM.at = 0;
-  const sig = JSON.stringify(WHO.qs);
+function whoSet(qs, pc){
+  WHO.qs = qs || []; WHO.pc = pc || {}; WHOSUM.at = 0;
+  const sig = JSON.stringify([WHO.qs, WHO.pc]);
   if (sig !== WHO.sig){ WHO.sig = sig; whoRender(); }
 }
 function whoRender(){
   const list = $('#whoList'), sum = $('#whoSum'); if (!list) return;
-  const qs = WHO.qs, me = SX.user.uid;
-  const free = qs.filter(q => !q.who.length).length, mine = qs.filter(q => q.who.some(w => w.uid === me)).length;
-  sum.innerHTML = qs.length ? `<span>Вопросов <b>${qs.length}</b></span><span>Свободно <b>${free}</b></span><span>Мои <b>${mine}</b></span><button class="chip" data-sx="who-copy">📋 Список для чата</button>` : '';
-  list.innerHTML = qs.length ? qs.map((q, i) => {
-    const took = q.who.some(w => w.uid === me), canDel = q.uid === me || SX.user.adm;
+  const me = SX.user.uid, plan = whoPlan(WHO.lec);
+  const all = plan.map(([q, ans], i) => ({ id: 'p' + i, text: q, ans, plan: true, who: WHO.pc['p' + i] || [] })).concat(WHO.qs);
+  const free = all.filter(q => !q.who.length).length, mine = all.filter(q => q.who.some(w => w.uid === me)).length;
+  sum.innerHTML = all.length ? `<span>Вопросов <b>${all.length}</b></span><span>Свободно <b>${free}</b></span><span>Мои <b>${mine}</b></span><button class="chip" data-sx="who-copy">📋 Список для чата</button>` : '';
+  const item = (q, i) => {
+    const took = q.who.some(w => w.uid === me), canDel = !q.plan && (q.uid === me || SX.user.adm);
     return `<div class="wq${took ? ' mine' : ''}${q.who.length ? '' : ' free'}">
       <div class="wq-n">${i + 1}</div>
-      <div class="wq-b"><div class="wq-t">${linkify(q.text)}</div>
+      <div class="wq-b"><div class="wq-t">${q.plan ? esc(q.text) : linkify(q.text)}</div>
+        ${q.plan ? `<details class="wq-ans"><summary>Ответ</summary><div>${esc(q.ans)}</div></details>` : ''}
         <div class="wq-who">${q.who.length ? q.who.map(w => `<span class="who-chip${w.uid === me ? ' me' : ''}">${ava(w.uid, w.name, 's')}${esc(w.uid === me ? 'Я' : w.name)}</span>`).join('') : '<span class="who-free">свободен — никто не взял</span>'}</div>
         <div class="wq-act"><button class="wq-claim${took ? ' on' : ''}" data-sx="claim" data-qid="${q.id}" data-on="${took ? 0 : 1}">${took ? '✓ Мой — отказаться' : '✋ Беру'}</button>
         ${canDel ? `<button class="wq-del" data-sx="qdel" data-qid="${q.id}" aria-label="Удалить вопрос">🗑</button>` : ''}</div>
       </div></div>`;
-  }).join('') : '<div class="empty">Пока пусто. Добавь вопросы, которые назвал преподаватель 👇</div>';
+  };
+  let h = '';
+  if (plan.length) h += `<div class="who-sec">📋 Вопросы по лекции</div>` + all.slice(0, plan.length).map(item).join('');
+  if (WHO.qs.length) h += `<div class="who-sec">➕ Добавили в группе</div>` + WHO.qs.map((q, i) => item(q, plan.length + i)).join('');
+  list.innerHTML = h || '<div class="empty">Пока пусто. Добавь вопросы, которые назвал преподаватель 👇</div>';
 }
 function whoAdd(form){
   const ta = form.querySelector('textarea'), btn = form.querySelector('button');
   const texts = ta.value.split('\n').map(s => s.replace(/^\s*(\d{1,3}\s*[.)]|[-–—•*])\s*/, '').trim()).filter(Boolean);
   if (!texts.length || btn.disabled) return;
   btn.disabled = true; const g = WHO.gen;
-  api('q_add', { lec: WHO.lec, texts }).then(d => { ta.value = ''; if (g === WHO.gen) whoSet(d.qs); toast(d.added > 1 ? `Добавлено вопросов: ${d.added}` : 'Вопрос добавлен'); })
+  api('q_add', { lec: WHO.lec, texts }).then(d => { ta.value = ''; if (g === WHO.gen) whoSet(d.qs, d.pc); toast(d.added > 1 ? `Добавлено вопросов: ${d.added}` : 'Вопрос добавлен'); })
     .catch(sxErr).finally(() => { btn.disabled = false; });
 }
 function whoCopy(){
   const l = LEC[WHO.lec]; if (!l) return;
-  const txt = `🙋 Кто что отвечает · ${l.subject.short}, лекция ${l.num}\n` + WHO.qs.map((q, i) => `${i + 1}. ${q.text} — ${q.who.length ? q.who.map(w => w.name).join(', ') : 'свободен'}`).join('\n');
+  const all = whoPlan(WHO.lec).map(([q], i) => ({ text: q, who: WHO.pc['p' + i] || [] })).concat(WHO.qs);
+  const txt = `🙋 Кто что отвечает · ${l.subject.short}, лекция ${l.num}\n` + all.map((q, i) => `${i + 1}. ${q.text} — ${q.who.length ? q.who.map(w => w.name).join(', ') : 'свободен'}`).join('\n');
   (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('📋 Список скопирован — вставь в чат группы'), () => toast('Не получилось скопировать'));
 }
 function whoBadges(){ // значки «🙋 занято/всего» в списке лекций предмета
   if (!loggedIn() || !document.querySelector('[data-who]')) return;
-  const fill = s => document.querySelectorAll('[data-who]').forEach(el => { const v = s[el.dataset.who]; el.textContent = v ? `🙋 ${v[1]}/${v[0]}` : ''; el.hidden = !v; });
+  const fill = s => document.querySelectorAll('[data-who]').forEach(el => { const v = s[el.dataset.who], n = whoPlan(el.dataset.who).length; el.textContent = v ? `🙋 ${v[1]}/${v[0] + n}` : ''; el.hidden = !v; });
   if (WHOSUM.data && Date.now() - WHOSUM.at < 60000) return fill(WHOSUM.data);
   api('q_sum').then(d => { WHOSUM = { at: Date.now(), data: d.sum || {} }; fill(WHOSUM.data); }).catch(() => {});
 }
@@ -1505,13 +1514,13 @@ document.addEventListener('click', e => {
   else if (a === 'who-copy') whoCopy();
   else if (a === 'claim'){
     t.disabled = true; const g = WHO.gen;
-    api('q_claim', { lec: WHO.lec, qid: t.dataset.qid, on: t.dataset.on === '1' }).then(d => { if (g === WHO.gen) whoSet(d.qs); if (t.dataset.on === '1') toast('✋ Вопрос твой — удачи!'); })
+    api('q_claim', { lec: WHO.lec, qid: t.dataset.qid, on: t.dataset.on === '1' }).then(d => { if (g === WHO.gen) whoSet(d.qs, d.pc); if (t.dataset.on === '1') toast('✋ Вопрос твой — удачи!'); })
       .catch(e => { sxErr(e); whoLoad(); }).finally(() => { t.disabled = false; });
   }
   else if (a === 'qdel'){
     if (!t.classList.contains('sure')){ t.classList.add('sure'); t.textContent = 'Удалить?'; setTimeout(() => { if (t.isConnected){ t.classList.remove('sure'); t.textContent = '🗑'; } }, 3000); return; }
     const g = WHO.gen;
-    api('q_del', { lec: WHO.lec, qid: t.dataset.qid }).then(d => { if (g === WHO.gen) whoSet(d.qs); toast('Вопрос удалён'); }).catch(sxErr);
+    api('q_del', { lec: WHO.lec, qid: t.dataset.qid }).then(d => { if (g === WHO.gen) whoSet(d.qs, d.pc); toast('Вопрос удалён'); }).catch(sxErr);
   }
   else if (a === 'mdel'){
     e.stopPropagation();
