@@ -1063,7 +1063,7 @@ h2{font-size:15pt;margin:22px 0 8px;color:${s.ink};break-after:avoid}
 table{border-collapse:collapse;width:100%;font-size:10pt;margin:8px 0;break-inside:avoid}
 th{background:${s.soft};color:${s.ink};text-align:left;padding:6px 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 td{padding:6px 8px;border-bottom:1px solid #e6e4ef;vertical-align:top}
-figure{text-align:center;margin:10px 0;break-inside:avoid} figcaption{font-size:9pt;color:#6a6f82} figure svg{max-width:100%;height:auto} figure.pic img{max-width:92%;max-height:118mm;border-radius:8px;border:1px solid #e6e4ef}
+figure{text-align:center;margin:10px 0;break-inside:avoid} figcaption{font-size:9pt;color:#6a6f82} figure svg{max-width:100%;height:auto} figure.pic img{max-width:92%;max-height:118mm;border-radius:8px;border:1px solid #e6e4ef}.vid{display:flex;gap:8px;align-items:center;border:1px solid #e6e4ef;border-radius:10px;padding:5px 10px;margin:4px 0;text-decoration:none;color:#1d2030;break-inside:avoid}.vid-pl{width:22px;height:22px;border-radius:50%;background:#c2410c;color:#fff;display:inline-grid;place-items:center;font-size:10px;flex:none}.vid-t b{display:block;font-size:10.5pt}.vid-t small{color:#6a6f82;font-size:8.5pt}
 .rem{background:#fff7d6;border-radius:10px;padding:10px 16px;margin-top:18px;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .cards{columns:2;column-gap:20px;font-size:10pt} .cards div{break-inside:avoid;margin:0 0 8px;padding:6px 8px;border:1px solid #e6e4ef;border-radius:6px}
 .bar{position:sticky;top:0;background:#fff;padding:10px 0 14px;display:flex;gap:10px;align-items:center}
@@ -1106,7 +1106,7 @@ h3{font-size:11.5pt;margin:10px 0 4px;break-after:avoid}
 table{border-collapse:collapse;width:100%;font-size:9.6pt;margin:8px 0;break-inside:avoid}
 th{background:${s.soft};color:${s.ink};text-align:left;padding:6px 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 td{padding:6px 8px;border-bottom:1px solid #e6e4ef;vertical-align:top}
-figure{text-align:center;margin:10px 0;break-inside:avoid} figure svg{max-width:100%;max-height:100mm;height:auto} figure.pic img{max-width:94%;max-height:120mm;border-radius:8px;border:1px solid #e6e4ef}
+figure{text-align:center;margin:10px 0;break-inside:avoid} figure svg{max-width:100%;max-height:100mm;height:auto} figure.pic img{max-width:94%;max-height:120mm;border-radius:8px;border:1px solid #e6e4ef}.vid{display:flex;gap:8px;align-items:center;border:1px solid #e6e4ef;border-radius:10px;padding:5px 10px;margin:4px 0;text-decoration:none;color:#1d2030;break-inside:avoid}.vid-pl{width:22px;height:22px;border-radius:50%;background:#c2410c;color:#fff;display:inline-grid;place-items:center;font-size:10px;flex:none}.vid-t b{display:block;font-size:10.5pt}.vid-t small{color:#6a6f82;font-size:8.5pt}
 figcaption{font-size:9pt;color:#6a6f82;margin-top:3px} figcaption:empty{display:none}
 .rem{background:#fff7d6;border-radius:12px;padding:10px 18px;margin-top:20px;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .cards{columns:2;column-gap:18px;font-size:9.6pt} .cards div{break-inside:avoid;margin:0 0 7px;padding:6px 9px;border:1px solid #e6e4ef;border-radius:7px}
@@ -1711,6 +1711,8 @@ document.addEventListener('click', e => {
   const bg = e.target.closest('[data-bug]');
   if (bg){ e.preventDefault(); openBug(bg.dataset.bug); return; }
   if (e.target.closest('#bugGo')){ setTimeout(closeSheet, 400); return; }
+  const pz = e.target.closest('#app figure.pic img');
+  if (pz && !e.target.closest('.sheet')){ const cap = pz.closest('figure').querySelector('figcaption'); openSheet(`<div class="pz"><img src="${pz.getAttribute('src')}" alt=""></div>${cap && cap.textContent ? `<p class="bug-p">${esc(cap.textContent)}</p>` : ''}<a class="secondary bug-go" style="display:block;text-align:center;margin-top:10px" href="${pz.getAttribute('src')}" target="_blank" rel="noopener">🔍 Открыть картинку целиком (можно увеличить пальцами)</a>`); return; }
   const vd = e.target.closest('[data-vid]');
   if (vd){ e.preventDefault(); const k = vd.dataset.vid.lastIndexOf('|'); openVideo(vd.dataset.vid.slice(0, k), vd.dataset.vid.slice(k + 1)); return; }
   const tf = e.target.closest('[data-tfile]');
