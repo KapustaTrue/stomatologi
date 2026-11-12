@@ -8166,7 +8166,7 @@ function openBug(spec){
 /* ===================== аккаунт: вход через Telegram, болталка, «Кто что отвечает», прогресс в облаке ===================== */
 // Сервер — облачная функция в Яндекс Облаке (server/index.py). Пустой API_URL — всё это скрыто, сайт работает как раньше.
 const API_URL = 'https://functions.yandexcloud.net/d4eeuhvidn98ijh1r9j6';
-const GROUP_LINK = ''.startsWith('https://t.me/') ? '' : ''; // приглашение в чат группы (src/group_link.txt)
+const GROUP_LINK = 'https://t.me/+5iey76ecJMhiODcy'.startsWith('https://t.me/') ? 'https://t.me/+5iey76ecJMhiODcy' : ''; // приглашение в чат группы (src/group_link.txt)
 const joinBtn = (cls='secondary') => GROUP_LINK ? `<a class="${cls} bug-go join-go" href="${GROUP_LINK}" target="_blank" rel="noopener">👥 Вступить в чат группы</a>` : '';
 const SX = { on: /^https:\/\//.test(API_URL) || /^http:\/\/(localhost|127\.0\.0\.1)/.test(API_URL), tok: store.get('tok', ''), user: store.get('user', null) };
 const loggedIn = () => SX.on && !!SX.tok && !!SX.user;
