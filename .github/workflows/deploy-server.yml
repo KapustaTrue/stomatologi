@@ -39,11 +39,23 @@ jobs:
         id: cfg
         run: echo "chat=$(python3 -c "import json;print(json.load(open('bot/config.json')).get('chat',''))")" >> "$GITHUB_OUTPUT"
 
+      - name: Вход в Облако (GitHub → федерация → IAM-токен)
+        id: iam
+        run: |
+          GH=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/${GITHUB_REPOSITORY_OWNER}" | python3 -c "import sys,json;print(json.load(sys.stdin)['value'])")
+          python3 -c "import sys,json,base64;p=sys.argv[1].split('.')[1];p+='='*(-len(p)%4);c=json.loads(base64.urlsafe_b64decode(p));print('sub:',c['sub'],'| aud:',c['aud'])" "$GH"
+          R=$(curl -sS https://auth.yandex.cloud/oauth/token -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
+              -d requested_token_type=urn:ietf:params:oauth:token-type:access_token -d audience=${YC_SA_ID} \
+              -d subject_token_type=urn:ietf:params:oauth:token-type:id_token --data-urlencode subject_token=$GH)
+          T=$(echo "$R" | python3 -c "import sys,json;print(json.load(sys.stdin).get('access_token',''))")
+          if [ -z "$T" ]; then echo "Ответ Облака: $R"; exit 1; fi
+          echo "::add-mask::$T"; echo "token=$T" >> "$GITHUB_OUTPUT"
+
       - name: Выкладка функции
         id: fn
         uses: yc-actions/yc-sls-function@v5
         with:
-          yc-sa-id: ${{ env.YC_SA_ID }}
+          yc-iam-token: ${{ steps.iam.outputs.token }}
           folder-id: ${{ env.YC_FOLDER_ID }}
           function-name: zubrezhka-api
           runtime: python312
