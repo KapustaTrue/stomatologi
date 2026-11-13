@@ -60,7 +60,7 @@ def hw_message(changes, sch):
 
 # ---------- расписание ----------
 def day_pairs(day):
-    return [(p.get('n'), (p.get('subj') or '').strip(), str(p.get('room') or '').strip()) for p in sorted(day or [], key=lambda p: p.get('n') or 0)]
+    return [(p.get('n'), (p.get('subj') or '').strip(), str(p.get('room') or '').strip(), p.get('grp')) for p in sorted(day or [], key=lambda p: p.get('n') or 0)]
 
 
 def day_text(day):
@@ -70,14 +70,14 @@ def day_text(day):
     groups = []
     for p in ps:
         g = groups[-1] if groups else None
-        if g and g['subj'] == p.get('subj') and g['room'] == p.get('room') and g['to'] + 1 == p.get('n'):
+        if g and g['subj'] == p.get('subj') and g['room'] == p.get('room') and g.get('grp') == p.get('grp') and g['to'] + 1 == p.get('n'):
             g['to'] = p['n']; g['chg'] = g['chg'] or p.get('chg')
         else:
-            groups.append({'from': p.get('n'), 'to': p.get('n'), 'subj': p.get('subj'), 'room': p.get('room'), 'chg': p.get('chg')})
+            groups.append({'from': p.get('n'), 'to': p.get('n'), 'subj': p.get('subj'), 'room': p.get('room'), 'grp': p.get('grp'), 'chg': p.get('chg')})
     out = []
     for g in groups:
         nn = f'{g["from"]}–{g["to"]}' if g['to'] != g['from'] else f'{g["from"]}'
-        out.append(f'{nn} · {esc(g["subj"])}' + (f' ({esc(g["room"])})' if g['room'] else '') + (' 🔄' if g['chg'] else ''))
+        out.append(f'{nn} · {esc(g["subj"])}' + (f' ({esc(g["room"])})' if g['room'] else '') + (f' — {g["grp"]} подгр.' if g.get('grp') else '') + (' 🔄' if g['chg'] else ''))
     return '; '.join(out)
 
 

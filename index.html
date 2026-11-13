@@ -270,6 +270,7 @@ html[data-theme=dark] .sch-joke{background:#15281a;color:#c9f2d2;border-color:#3
 .sch-chg{background:#fff1e6;border:2px solid #ff8a3d;border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:14px;color:#6b3410}
 .sch-chg b{display:block;margin-bottom:4px}.sch-chg ul{margin:0;padding-left:18px}.sch-chg li{margin:2px 0}
 .sch-chg-tag{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:#ff8a3d;color:#fff;font-size:11px;font-weight:700;vertical-align:middle}
+.sch-grp-tag{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--cs);color:var(--ci);border:1px solid var(--c);font-size:11px;font-weight:700;vertical-align:middle}
 .sb-chg{display:inline-block!important;color:#fff!important;background:rgba(0,0,0,.22);border-radius:999px;padding:2px 9px;font-weight:700;font-size:12px!important;margin-top:5px}
 html[data-theme=dark] .sch-chg{background:#2e1d10;color:#ffd2ad;border-color:#c8611c}
 .exam-entry{display:flex;gap:14px;align-items:center;width:100%;text-align:left;background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin:0 0 16px;border:2px solid var(--c)}
@@ -9441,33 +9442,41 @@ empty: [
 
 // расписание из schedule.json
 const SCHEDULE = {
-  "monday": "2026-11-09",
+  "monday": "2026-11-16",
   "times": {"1": ["8:30", "10:00"], "2": ["10:15", "11:45"], "3": ["12:00", "13:30"], "4": ["13:45", "15:15"], "5": ["15:25", "16:55"], "6": ["17:05", "18:35"], "7": ["18:45", "20:15"]},
-  "changes": ["Вт: 1–2 пары микробиологии отменили (сегодня, в последний момент)", "Ср: микробиологии не будет — только история России (4 пара)", "Чт: только медгенетика — 1, 2 и 3 пары", "Пт: медгенетика 2 и 3 парами (с 10:15), микробиологии нет", "Сб: микробиологии не будет — пар нет"],
-  "dayNotes": {"1": "🦠 Микробиологию отменили, когда половина группы уже тряслась в автобусе, а вторая половина — уже в колледже. Зато лабораторная засчитана всем: «Посев студентов в общественный транспорт в 7 утра». Результат: рост колоний обнаружен, знаний не выявлено."},
+  "changes": [],
+  "dayNotes": {},
   "days": [
+    [
+      {"n": 1, "subj": "Анатомия", "room": "401", "teacher": "Запевалов И.А.", "grp": 1},
+      {"n": 2, "subj": "Анатомия", "room": "401", "teacher": "Запевалов И.А.", "grp": 1},
+      {"n": 3, "subj": "Анатомия", "room": "401", "teacher": "Запевалов И.А.", "grp": 2},
+      {"n": 4, "subj": "Анатомия", "room": "401", "teacher": "Запевалов И.А.", "grp": 2}
+    ],
+    [
+      {"n": 1, "subj": "Анатомия", "room": "401", "teacher": "Запевалов И.А.", "grp": 1},
+      {"n": 2, "subj": "Анатомия", "room": "401", "teacher": "Запевалов И.А.", "grp": 1},
+      {"n": 3, "subj": "Анатомия", "room": "401", "teacher": "Запевалов И.А.", "grp": 2},
+      {"n": 4, "subj": "Анатомия", "room": "401", "teacher": "Запевалов И.А.", "grp": 2}
+    ],
     [
       {"n": 1, "subj": "Микробиология", "room": "401", "teacher": "Красавина А.А."},
       {"n": 2, "subj": "Микробиология", "room": "401", "teacher": "Красавина А.А."},
-      {"n": 3, "subj": "История России", "room": "305", "teacher": "Беляев Д.М."}
-    ],
-    [
       {"n": 3, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."},
       {"n": 4, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."}
     ],
     [
-      {"n": 4, "subj": "История России", "room": "305", "teacher": "Беляев Д.М."}
+      {"n": 1, "subj": "Микробиология", "room": "401", "teacher": "Красавина А.А."},
+      {"n": 2, "subj": "Микробиология", "room": "401", "teacher": "Красавина А.А."}
     ],
     [
-      {"n": 1, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."},
-      {"n": 2, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."},
-      {"n": 3, "chg": true, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."}
+      {"n": 2, "subj": "Микробиология", "room": "401", "teacher": "Красавина А.А."},
+      {"n": 3, "subj": "Микробиология", "room": "401", "teacher": "Красавина А.А."}
     ],
     [
-      {"n": 2, "chg": true, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."},
-      {"n": 3, "chg": true, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."}
-    ],
-    []
+      {"n": 3, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."},
+      {"n": 4, "subj": "Медицинская генетика", "room": "302", "teacher": "Шук Н.Н."}
+    ]
   ]
 };
 const FT_VER = '69b43096';
@@ -9636,12 +9645,13 @@ function schedNow(){ // что сейчас: {state, pair, day}
   return { state:'done', day:di };
 }
 const shortName = n => n.replace('Медицинская генетика','Медгенетика');
+const grpSfx = p => p && p.grp ? ` (${p.grp} подгр.)` : '';
 function schedBtnText(){
   const s = schedNow(); if (!s) return 'Пары на неделю';
   const T = p => SCHEDULE.times[p.n];
-  if (s.state==='now') return `<b class="live">● Сейчас</b> ${esc(shortName(s.pair.subj))} · ауд. ${esc(s.pair.room)} · до ${T(s.pair)[1]}`;
-  if (s.state==='next') return `Дальше: ${esc(shortName(s.pair.subj))} в ${T(s.pair)[0]} · ауд. ${esc(s.pair.room)}`;
-  if (s.state==='first') return `Сегодня с ${T(s.pair)[0]}: ${esc(shortName(s.pair.subj))} · ауд. ${esc(s.pair.room)}`;
+  if (s.state==='now') return `<b class="live">● Сейчас</b> ${esc(shortName(s.pair.subj) + grpSfx(s.pair))} · ауд. ${esc(s.pair.room)} · до ${T(s.pair)[1]}`;
+  if (s.state==='next') return `Дальше: ${esc(shortName(s.pair.subj) + grpSfx(s.pair))} в ${T(s.pair)[0]} · ауд. ${esc(s.pair.room)}`;
+  if (s.state==='first') return `Сегодня с ${T(s.pair)[0]}: ${esc(shortName(s.pair.subj) + grpSfx(s.pair))} · ауд. ${esc(s.pair.room)}`;
   if (s.state==='done') return s.nextDay!=null ? `На сегодня всё 🎉 ${DAY_FULL[s.nextDay]} — с ${T(s.pair)[0]}` : 'На этой неделе пары закончились 🎉';
   if (s.state==='old') return 'Ждём расписание на новую неделю';
   return `Неделя ${schedWeekLabel()}`;
@@ -9704,7 +9714,7 @@ function viewSchedule(keep){
       const prog = live ? Math.round((m - toMin(a)) / (toMin(b) - toMin(a)) * 100) : 0;
       html += `<${c.id ? `button data-go="s-${c.id}"` : 'div'} class="sch-pair${live ? ' live' : ''}${past ? ' past' : ''}" style="--c:${c.c};--ci:${c.ci};--cs:${c.cs}">
         <div class="sch-time"><b>${a}</b><span>${b}</span><i>${p.n} пара</i></div>
-        <div class="sch-body"><div class="sch-name"><span class="sch-em">${c.em}</span>${esc(p.subj)}${p.chg ? '<span class="sch-chg-tag">замена</span>' : ''}</div>
+        <div class="sch-body"><div class="sch-name"><span class="sch-em">${c.em}</span>${esc(p.subj)}${p.chg ? '<span class="sch-chg-tag">замена</span>' : ''}${p.grp ? `<span class="sch-grp-tag">${esc(String(p.grp))} подгруппа</span>` : ''}</div>
           <div class="sch-meta"><span class="sch-room">ауд. ${esc(p.room)}</span><span>👤 ${esc(p.teacher)}</span></div>
           ${hwFor(isoD(d), p.n).map(h => `<div class="sch-hw"><span class="sch-hw-ic">📝</span><div><b>ДЗ:</b> ${esc(h.text)}${h.author ? `<small> — ${esc(h.author)}</small>` : ''}</div></div>`).join('')}
           ${live ? `<div class="sch-live"><span>● Идёт сейчас · осталось ${toMin(b) - m} мин</span><div class="sch-prog"><i style="width:${prog}%"></i></div></div>` : ''}

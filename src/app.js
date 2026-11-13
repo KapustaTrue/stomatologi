@@ -161,12 +161,13 @@ function schedNow(){ // что сейчас: {state, pair, day}
   return { state:'done', day:di };
 }
 const shortName = n => n.replace('Медицинская генетика','Медгенетика');
+const grpSfx = p => p && p.grp ? ` (${p.grp} подгр.)` : '';
 function schedBtnText(){
   const s = schedNow(); if (!s) return 'Пары на неделю';
   const T = p => SCHEDULE.times[p.n];
-  if (s.state==='now') return `<b class="live">● Сейчас</b> ${esc(shortName(s.pair.subj))} · ауд. ${esc(s.pair.room)} · до ${T(s.pair)[1]}`;
-  if (s.state==='next') return `Дальше: ${esc(shortName(s.pair.subj))} в ${T(s.pair)[0]} · ауд. ${esc(s.pair.room)}`;
-  if (s.state==='first') return `Сегодня с ${T(s.pair)[0]}: ${esc(shortName(s.pair.subj))} · ауд. ${esc(s.pair.room)}`;
+  if (s.state==='now') return `<b class="live">● Сейчас</b> ${esc(shortName(s.pair.subj) + grpSfx(s.pair))} · ауд. ${esc(s.pair.room)} · до ${T(s.pair)[1]}`;
+  if (s.state==='next') return `Дальше: ${esc(shortName(s.pair.subj) + grpSfx(s.pair))} в ${T(s.pair)[0]} · ауд. ${esc(s.pair.room)}`;
+  if (s.state==='first') return `Сегодня с ${T(s.pair)[0]}: ${esc(shortName(s.pair.subj) + grpSfx(s.pair))} · ауд. ${esc(s.pair.room)}`;
   if (s.state==='done') return s.nextDay!=null ? `На сегодня всё 🎉 ${DAY_FULL[s.nextDay]} — с ${T(s.pair)[0]}` : 'На этой неделе пары закончились 🎉';
   if (s.state==='old') return 'Ждём расписание на новую неделю';
   return `Неделя ${schedWeekLabel()}`;
@@ -229,7 +230,7 @@ function viewSchedule(keep){
       const prog = live ? Math.round((m - toMin(a)) / (toMin(b) - toMin(a)) * 100) : 0;
       html += `<${c.id ? `button data-go="s-${c.id}"` : 'div'} class="sch-pair${live ? ' live' : ''}${past ? ' past' : ''}" style="--c:${c.c};--ci:${c.ci};--cs:${c.cs}">
         <div class="sch-time"><b>${a}</b><span>${b}</span><i>${p.n} пара</i></div>
-        <div class="sch-body"><div class="sch-name"><span class="sch-em">${c.em}</span>${esc(p.subj)}${p.chg ? '<span class="sch-chg-tag">замена</span>' : ''}</div>
+        <div class="sch-body"><div class="sch-name"><span class="sch-em">${c.em}</span>${esc(p.subj)}${p.chg ? '<span class="sch-chg-tag">замена</span>' : ''}${p.grp ? `<span class="sch-grp-tag">${esc(String(p.grp))} подгруппа</span>` : ''}</div>
           <div class="sch-meta"><span class="sch-room">ауд. ${esc(p.room)}</span><span>👤 ${esc(p.teacher)}</span></div>
           ${hwFor(isoD(d), p.n).map(h => `<div class="sch-hw"><span class="sch-hw-ic">📝</span><div><b>ДЗ:</b> ${esc(h.text)}${h.author ? `<small> — ${esc(h.author)}</small>` : ''}</div></div>`).join('')}
           ${live ? `<div class="sch-live"><span>● Идёт сейчас · осталось ${toMin(b) - m} мин</span><div class="sch-prog"><i style="width:${prog}%"></i></div></div>` : ''}
