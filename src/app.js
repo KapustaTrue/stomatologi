@@ -838,6 +838,7 @@ function viewLecture(l, secIdx){
   app.innerHTML = `
     <div class="lec-head"><div class="kicker">${s.emoji} ${esc(s.short)} · лекция ${l.num}${l.date?' · '+l.date:''}</div>
       <h1>${esc(l.title)}</h1><p>${esc(l.sub)}</p>${s.teacher?`<p class="lt">👤 ${esc(s.teacher)}</p>`:''}</div>
+    ${l.atlas ? `<a class="outlink" href="${esc(l.atlas.url)}"><b>${esc(l.atlas.label)}</b><span class="chev">${I.chev}</span></a>` : ''}
     <div class="tabs${SX.on ? ' four' : ''}">${[['notes','📖','Конспект'],['cards','🃏','Карточки'],['quiz','✅','Тест']].concat(SX.on ? [['who','🙋','Кто что']] : [])
       .map(([k, e, t]) => `<button class="tab" data-tab="${k}">${SX.on ? `<span class="ti">${e}</span><span>${t}</span>` : e + ' ' + t}</button>`).join('')}
     </div>
