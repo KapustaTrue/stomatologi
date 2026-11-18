@@ -3,6 +3,7 @@ const IMM = {
   id: 'immunology', name: 'Основы микробиологии и иммунологии', short: 'Микробиология',
   color: '#2f6fd6', soft: '#e6f0ff', ink: '#163f86', emoji: '🦠',
   teacher: 'Красавина Алёна Александровна',
+  topics: [{ title: "Виды питательных сред", sub: "Практическое занятие · 9 иллюстрированных карточек и PDF", url: "full/imm-2/atlas/" }],
   lectures: [
   {
     id: 'imm-1', num: 1, title: 'Иммунопрофилактика и вакцины',

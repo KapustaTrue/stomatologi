@@ -706,7 +706,8 @@ function viewSubject(s){
         <div><b>${esc(l.title)}</b><span>${esc(l.sub)}</span>
         <div class="prog" style="color:${s.ink}">${p.known?`<span>🃏 ${p.known}/${p.total}</span>`:''}${p.best!=null?`<span>✅ тест ${p.best}/${p.qn}</span>`:''}${loggedIn()?`<span data-who="${l.id}" hidden></span>`:''}</div></div>
         <span class="chev">${I.chev}</span></button>`;
-    }).join('')}`;
+    }).join('')}
+    ${(s.topics || []).map(t => `<a class="lec" href="${esc(t.url)}"><div class="n" style="background:${s.soft};color:${s.ink}">✎</div><div><b>${esc(t.title)}</b><span>${esc(t.sub)}</span></div><span class="chev">${I.chev}</span></a>`).join('')}`;
   whoBadges();
 }
 
